@@ -1,0 +1,10 @@
+*.install
+.merlin
+_build
+_opam
+var
+*.cap
+.*.swp
+.vscode
+/capnp-secrets/
+.DS_Store
