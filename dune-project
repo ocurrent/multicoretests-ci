@@ -24,6 +24,7 @@
   dune
   current
   current_github
+  current_docker
   (cmdliner (>= 1.1.0)))
  (tags
   (topics "to describe" your project)))

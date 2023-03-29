@@ -1,4 +1,4 @@
 (executable
  (name main)
  (public_name compiler-ci)
- (libraries current current_github cmdliner))
+ (libraries current current.cache current_github current_docker cmdliner))
