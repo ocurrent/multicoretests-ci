@@ -1,4 +1,13 @@
 (library
  (name compiler_ci_service)
  (public_name compiler-ci-service)
- (libraries current current.cache current_github current_docker cmdliner))
+ (libraries
+  logs.fmt
+  logs.cli
+  fmt.tty
+  fmt.cli
+  current
+  current.cache
+  current_github
+  current_docker
+  cmdliner))

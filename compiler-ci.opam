@@ -12,6 +12,8 @@ bug-reports: "https://github.com/username/reponame/issues"
 depends: [
   "ocaml"
   "dune" {>= "3.7"}
+  "logs"
+  "fmt"
   "current"
   "current_github"
   "current_docker"

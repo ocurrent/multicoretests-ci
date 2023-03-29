@@ -30,15 +30,17 @@ let build_with_docker repo commit =
     |> let> commit in
        Build.(BC.run local commit ())
   in
-  (* let+ state = Current.state ~hidden:true build *)
-  let+ job_id = get_job_id build and+ repo and+ commit in
+  let+ state = Current.state ~hidden:true build
+  and+ job_id = get_job_id build
+  and+ repo
+  and+ commit in
   let { Current_github.Repo_id.owner; name } = repo in
   match job_id with
   | None -> ()
   | Some job_id ->
       Hashtbl.add jobs
         (owner, name, Git.Commit.hash commit)
-        ("macos-worker-okkkkkk", job_id)
+        ("macos-worker-okkkkkk", (state, job_id))
 
 let v ~app () =
   let installations = Current_github.App.installations app in
@@ -47,7 +49,7 @@ let v ~app () =
 let get_job_ids ~owner ~name ~hash =
   [ fst @@ Hashtbl.find jobs (owner, name, hash) ]
 
-let main config mode app github_auth =
+let main () config mode app github_auth =
   Lwt_main.run
   @@
   let engine = Current.Engine.create ~config (v ~app) in
@@ -63,11 +65,40 @@ let main config mode app github_auth =
     :: Current_web.routes engine
   in
   let site =
-    Current_web.Site.v ?authn ~has_role ~secure_cookies ~name:"ocaml-ci" routes
+    Current_web.Site.v ?authn ~has_role ~secure_cookies ~name:"compiler-ci"
+      routes
   in
   Lwt.choose [ Current.Engine.thread engine; Current_web.run ~mode site ]
 
 open Cmdliner
+
+let pp_timestamp f x =
+  let open Unix in
+  let tm = localtime x in
+  Fmt.pf f "%04d-%02d-%02d %02d:%02d.%02d" (tm.tm_year + 1900) (tm.tm_mon + 1)
+    tm.tm_mday tm.tm_hour tm.tm_min tm.tm_sec
+
+let reporter =
+  let report src level ~over k msgf =
+    let k _ =
+      over ();
+      k ()
+    in
+    let src = Logs.Src.name src in
+    msgf @@ fun ?header ?tags:_ fmt ->
+    Fmt.kpf k Fmt.stderr
+      ("%a %a %a @[" ^^ fmt ^^ "@]@.")
+      pp_timestamp (Unix.gettimeofday ())
+      Fmt.(styled `Magenta string)
+      (Printf.sprintf "%14s" src)
+      Logs_fmt.pp_header (level, header)
+  in
+  { Logs.report }
+
+let setup_log =
+  Logs.set_reporter reporter;
+  let docs = Manpage.s_common_options in
+  Term.(const (fun _ -> ()) $ Logs_cli.level ~docs ())
 
 let cmd =
   let doc = "Test the OCaml compiler" in
@@ -76,6 +107,7 @@ let cmd =
     Term.(
       term_result
         (const main
+        $ setup_log
         $ Current.Config.cmdliner
         $ Current_web.cmdliner
         $ Current_github.App.cmdliner

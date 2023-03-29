@@ -3,6 +3,10 @@
  (package compiler-ci)
  (name main)
  (libraries
+  logs.fmt
+  logs.cli
+  fmt.tty
+  fmt.cli
   compiler-ci-service
   current
   current.cache
