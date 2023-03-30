@@ -26,7 +26,18 @@ module Op = struct
   module Outcome = Current.Unit
 
   let or_raise = function Ok () -> () | Error (`Msg m) -> raise (Failure m)
-  let dockerfile = ""
+
+  let dockerfile =
+    {|
+FROM ubuntu
+RUN apt update && apt install -y gcc binutils git make gawk sed diffutils
+RUN git clone --recursive "https://github.com/benmandrew/ocaml.git" -b "trunk"
+WORKDIR "ocaml"
+RUN git reset --hard be27ba8
+RUN ls -lah
+RUN ./configure
+RUN make && make tests
+  |}
 
   let run { docker_context; pool; build_timeout } job commit () =
     Current.Job.start ~timeout:build_timeout ~pool job
