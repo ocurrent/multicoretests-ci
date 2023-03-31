@@ -6,8 +6,11 @@
   logs.cli
   fmt.tty
   fmt.cli
+  capnp-rpc-lwt
   current
   current.cache
   current_github
   current_docker
-  cmdliner))
+  current_ocluster
+  cmdliner
+  obuilder-spec))

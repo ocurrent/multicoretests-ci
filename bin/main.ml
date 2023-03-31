@@ -1,6 +1,7 @@
 open Current.Syntax
 module Git = Current_git
 open Compiler_ci_service
+open Lwt.Infix
 
 let jobs = Hashtbl.create 128
 
@@ -24,11 +25,16 @@ let get_job_id x =
   let+ md = Current.Analysis.metadata x in
   match md with Some { Current.Metadata.job_id; _ } -> job_id | None -> None
 
-let build_with_docker repo commit =
+let build_with_docker ?ocluster repo commit =
   let build =
     Current.component "build"
     |> let> commit in
-       Build.(BC.run local commit ())
+       match ocluster with
+       | None -> Build.(BC.run local commit ())
+       | Some ocluster ->
+           let commit = Git.Commit.id commit in
+           Cluster_build.(BC.run ocluster { pool = "linux-x86_64"; commit } ())
+    (* Cluster_build.v ocluster ?on_cancel ~platforms ~repo ~spec src *)
   in
   let+ state = Current.state ~hidden:true build
   and+ job_id = get_job_id build
@@ -42,33 +48,52 @@ let build_with_docker repo commit =
         (owner, name, Git.Commit.hash commit)
         ("macos-worker-okkkkkk", (state, job_id))
 
-let v ~app () =
+let v ?ocluster ~app () =
+  let ocluster =
+    Option.map (Cluster_build.config ~timeout:(Duration.of_hour 1)) ocluster
+  in
   let installations = Current_github.App.installations app in
-  forall_refs ~installations build_with_docker
+  forall_refs ~installations (build_with_docker ?ocluster)
 
 let get_job_ids ~owner ~name ~hash =
   [ fst @@ Hashtbl.find jobs (owner, name, hash) ]
 
-let main () config mode app github_auth =
+let run_capnp capnp_listen_address =
+  let listen_address =
+    match capnp_listen_address with
+    | Some listen_address -> listen_address
+    | None -> Capnp_rpc_unix.Network.Location.tcp ~host:"0.0.0.0" ~port:9000
+  in
+  let config =
+    Capnp_rpc_unix.Vat_config.create ~secret_key:`Ephemeral listen_address
+  in
+  Capnp_rpc_unix.serve config >>= fun vat -> Lwt.return vat
+
+let main () config mode app capnp_listen_address github_auth submission_uri =
   Lwt_main.run
-  @@
-  let engine = Current.Engine.create ~config (v ~app) in
-  let authn = Github.authn github_auth in
-  let webhook_secret = Current_github.App.webhook_secret app in
-  let has_role =
-    if github_auth = None then Current_web.Site.allow_all else Github.has_role
-  in
-  let secure_cookies = github_auth <> None in
-  let routes =
-    Github.webhook_route ~engine ~get_job_ids ~webhook_secret
-    :: Github.login_route github_auth
-    :: Current_web.routes engine
-  in
-  let site =
-    Current_web.Site.v ?authn ~has_role ~secure_cookies ~name:"compiler-ci"
-      routes
-  in
-  Lwt.choose [ Current.Engine.thread engine; Current_web.run ~mode site ]
+  @@ ( run_capnp capnp_listen_address >>= fun vat ->
+       let ocluster =
+         Option.map (Capnp_rpc_unix.Vat.import_exn vat) submission_uri
+       in
+       let engine = Current.Engine.create ~config (v ?ocluster ~app) in
+       let authn = Github.authn github_auth in
+       let webhook_secret = Current_github.App.webhook_secret app in
+       let has_role =
+         if github_auth = None then Current_web.Site.allow_all
+         else Github.has_role
+       in
+       let secure_cookies = github_auth <> None in
+       let routes =
+         Github.webhook_route ~engine ~get_job_ids ~webhook_secret
+         :: Github.login_route github_auth
+         :: Current_web.routes engine
+       in
+       let site =
+         Current_web.Site.v ?authn ~has_role ~secure_cookies ~name:"compiler-ci"
+           routes
+       in
+       Lwt.choose [ Current.Engine.thread engine; Current_web.run ~mode site ]
+     )
 
 open Cmdliner
 
@@ -100,6 +125,24 @@ let setup_log =
   let docs = Manpage.s_common_options in
   Term.(const (fun _ -> ()) $ Logs_cli.level ~docs ())
 
+let capnp_listen_address =
+  let i =
+    Arg.info ~docv:"ADDR"
+      ~doc:
+        "Address to listen on, e.g. $(b,unix:/run/my.socket) (default: no RPC)."
+      [ "capnp-listen-address" ]
+  in
+  Arg.(
+    value
+    @@ opt (Arg.some Capnp_rpc_unix.Network.Location.cmdliner_conv) None
+    @@ i)
+
+let submission_service =
+  Arg.value
+  @@ Arg.opt Arg.(some Capnp_rpc_unix.sturdy_uri) None
+  @@ Arg.info ~doc:"The submission.cap file for the build scheduler service"
+       ~docv:"FILE" [ "submission-service" ]
+
 let cmd =
   let doc = "Test the OCaml compiler" in
   let info = Cmd.info "compiler-ci-service" ~doc in
@@ -111,6 +154,8 @@ let cmd =
         $ Current.Config.cmdliner
         $ Current_web.cmdliner
         $ Current_github.App.cmdliner
-        $ Current_github.Auth.cmdliner))
+        $ capnp_listen_address
+        $ Current_github.Auth.cmdliner
+        $ submission_service))
 
 let () = exit @@ Cmd.eval cmd

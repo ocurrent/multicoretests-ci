@@ -14,10 +14,13 @@ depends: [
   "dune" {>= "3.7"}
   "logs"
   "fmt"
+  "capnp-rpc-lwt"
   "current"
   "current_github"
   "current_docker"
+  "current_ocluster"
   "cmdliner" {>= "1.1.0"}
+  "obuilder-spec"
   "odoc" {with-doc}
 ]
 build: [

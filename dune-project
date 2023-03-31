@@ -24,6 +24,7 @@
   dune
   logs
   fmt
+  capnp-rpc-unix
   current
   current_github
   current_docker
@@ -40,9 +41,12 @@
   dune
   logs
   fmt
+  capnp-rpc-lwt
   current
   current_github
   current_docker
-  (cmdliner (>= 1.1.0)))
+  current_ocluster
+  (cmdliner (>= 1.1.0))
+  obuilder-spec)
  (tags
   (topics "to describe" your project)))

@@ -7,6 +7,7 @@
   logs.cli
   fmt.tty
   fmt.cli
+  capnp-rpc-unix
   compiler-ci-service
   current
   current.cache
