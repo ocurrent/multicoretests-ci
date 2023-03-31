@@ -1,8 +1,8 @@
 open Current.Syntax
-module Git = Current_git
-open Compiler_ci_service
+open Compiler_ci_lib
 open Lwt.Infix
 
+let platforms = Conf.platforms ()
 let jobs = Hashtbl.create 128
 
 let forall_refs ~installations fn =
@@ -17,36 +17,38 @@ let forall_refs ~installations fn =
         |> Current.list_iter (module Current_github.Api.Commit) @@ fun head ->
            let repo = Current.map Current_github.Api.Commit.repo_id head in
            let commit =
-             Git.fetch @@ Current.map Current_github.Api.Commit.id head
+             Current_git.fetch @@ Current.map Current_github.Api.Commit.id head
            in
-           fn repo commit
+           Current.list_iter
+             (module Current.Unit)
+             (fun _ -> Current.return ())
+             (fn repo commit)
 
 let get_job_id x =
   let+ md = Current.Analysis.metadata x in
   match md with Some { Current.Metadata.job_id; _ } -> job_id | None -> None
 
 let build_with_docker ?ocluster repo commit =
-  let build =
-    Current.component "build"
-    |> let> commit in
-       match ocluster with
-       | None -> Build.(BC.run local commit ())
-       | Some ocluster ->
-           let commit = Git.Commit.id commit in
-           Cluster_build.(BC.run ocluster { pool = "linux-x86_64"; commit } ())
-    (* Cluster_build.v ocluster ?on_cancel ~platforms ~repo ~spec src *)
-  in
-  let+ state = Current.state ~hidden:true build
-  and+ job_id = get_job_id build
-  and+ repo
-  and+ commit in
-  let { Current_github.Repo_id.owner; name } = repo in
-  match job_id with
-  | None -> ()
-  | Some job_id ->
-      Hashtbl.add jobs
-        (owner, name, Git.Commit.hash commit)
-        ("macos-worker-okkkkkk", (state, job_id))
+  Current.list_seq
+  @@ List.map
+       (fun platform ->
+         let build =
+           match ocluster with
+           | None -> Build.v commit
+           | Some ocluster -> Cluster_build.v ~ocluster ~platform commit
+         in
+         let+ state = Current.state ~hidden:true build
+         and+ job_id = get_job_id build
+         and+ repo
+         and+ commit in
+         let { Current_github.Repo_id.owner; name } = repo in
+         match job_id with
+         | None -> ()
+         | Some job_id ->
+             Hashtbl.add jobs
+               (owner, name, Current_git.Commit.hash commit)
+               ("macos-worker-okkkkkk", (state, job_id)))
+       platforms
 
 let v ?ocluster ~app () =
   let ocluster =

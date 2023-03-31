@@ -1,3 +1,4 @@
+open Current.Syntax
 open Lwt.Infix
 module Raw = Current_docker.Raw
 
@@ -64,3 +65,8 @@ let build_timeout = Duration.of_hour 1
 let local = { Op.docker_context = None; pool = dev_pool; build_timeout }
 
 module BC = Current_cache.Generic (Op)
+
+let v commit =
+  Current.component "build"
+  |> let> commit in
+     BC.run local commit ()

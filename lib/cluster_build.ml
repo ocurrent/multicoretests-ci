@@ -1,4 +1,4 @@
-(* open Current.Syntax *)
+open Current.Syntax
 open Capnp_rpc_lwt
 open Lwt.Infix
 
@@ -87,3 +87,9 @@ module BC = Current_cache.Generic (Op)
 let config ?timeout sr =
   let connection = Current_ocluster.Connection.create sr in
   { connection; timeout; on_cancel = ignore }
+
+let v ~ocluster ~(platform : Conf.platform) commit =
+  Current.component "build"
+  |> let> commit in
+     let commit = Current_git.Commit.id commit in
+     BC.run ocluster { pool = platform.pool; commit } ()

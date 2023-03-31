@@ -1,6 +1,6 @@
 (library
- (name compiler_ci_service)
- (public_name compiler-ci-service)
+ (name compiler_ci_lib)
+ (public_name compiler-ci-lib)
  (libraries
   logs.fmt
   logs.cli
@@ -13,4 +13,6 @@
   current_docker
   current_ocluster
   cmdliner
-  obuilder-spec))
+  dockerfile-opam
+  obuilder-spec
+  ocaml-version))

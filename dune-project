@@ -33,7 +33,7 @@
   (topics "to describe" your project)))
 
 (package
- (name compiler-ci-service)
+ (name compiler-ci-lib)
  (synopsis "A short synopsis")
  (description "A longer description")
  (depends
@@ -47,6 +47,7 @@
   current_docker
   current_ocluster
   (cmdliner (>= 1.1.0))
+  dockerfile-opam
   obuilder-spec)
  (tags
   (topics "to describe" your project)))

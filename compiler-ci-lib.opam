@@ -20,6 +20,7 @@ depends: [
   "current_docker"
   "current_ocluster"
   "cmdliner" {>= "1.1.0"}
+  "dockerfile-opam"
   "obuilder-spec"
   "odoc" {with-doc}
 ]

@@ -8,7 +8,7 @@
   fmt.tty
   fmt.cli
   capnp-rpc-unix
-  compiler-ci-service
+  compiler-ci-lib
   current
   current.cache
   current_github
