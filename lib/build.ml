@@ -30,15 +30,19 @@ module Op = struct
 
   let dockerfile =
     {|
-FROM ubuntu
-RUN apt update && apt install -y gcc binutils git make gawk sed diffutils
-RUN git clone --recursive "https://github.com/benmandrew/ocaml.git" -b "trunk"
-WORKDIR "ocaml"
-RUN git reset --hard be27ba8
-RUN ls -lah
-RUN ./configure
-RUN make && make tests
-  |}
+((from debian)
+ (run
+  (network host)
+  (shell "apt-get update && apt-get install -yq --no-install-recommends opam ocaml git ca-certificates"))
+ (run
+  (network host)
+  (shell "opam init -ya -c 5.0.0 --disable-sandboxing && git clone https://github.com/ocaml-multicore/multicoretests.git"))
+ (workdir "multicoretests")
+ (run
+  (network host)
+  (shell "opam install . --deps-only --with-test -y"))
+ (run (shell "eval $(opam env) && dune build && dune runtest -j1 --no-buffer --display=quiet")))
+    |}
 
   let run { docker_context; pool; build_timeout } job commit () =
     Current.Job.start ~timeout:build_timeout ~pool job

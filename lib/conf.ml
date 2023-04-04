@@ -137,34 +137,27 @@ let platforms () =
     }
   in
   let distro_arches =
-    DD.active_tier1_distros `X86_64 @ DD.active_tier2_distros `X86_64
+    DD.active_tier1_distros `X86_64 (* @ DD.active_tier2_distros `X86_64 *)
     |> List.map (fun d ->
            DD.distro_arches (Ocaml_version.v 5 0) d
            |> List.map (fun a -> (d, a)))
     |> List.flatten
   in
-  List.map
-    (fun (distro, arch) ->
-      let distro_str = DD.tag_of_distro distro in
-      v ~arch distro_str distro)
-    distro_arches
-
-(* let pull ~arch ~schedule ~builder ~distro ~docker_tag =
-   Current.component "pull@,%s %s" distro (arch_to_string arch)
-   |> let> () = Current.return () in
-      Builder.pull ~schedule ~arch builder @@ docker_tag *)
-
-(* let fetch_platforms ~include_macos () =
-   let schedule = Current_cache.Schedule.v ~valid_for:(Duration.of_day 30) () in
-   let v { label; builder; pool; distro; arch; docker_tag } =
-     let base = pull ~arch ~schedule ~builder ~distro ~docker_tag in
-     let host_base =
-       match arch with
-       | `X86_64 -> base
-       | _ -> pull ~arch:`X86_64 ~schedule ~builder ~distro ~docker_tag
-     in
-     Platform.get ~arch ~label ~builder ~pool ~distro ~ocaml_version ~host_base
-       ~opam_version base
-   in
-   let v2_1 = platforms ~ci_profile `V2_1 ~include_macos in
-   Current.list_seq (List.map v v2_1) *)
+  let remove_duplicates =
+    let distro_eq (d0, a0) (d1, a1) =
+      String.equal
+        (Printf.sprintf "%s-%s" (DD.tag_of_distro d0) (arch_to_string a0))
+        (Printf.sprintf "%s-%s" (DD.tag_of_distro d1) (arch_to_string a1))
+    in
+    List.fold_left
+      (fun l d -> if List.exists (distro_eq d) l then l else d :: l)
+      []
+  in
+  (* List.iter (fun (d, a) -> Logs.err (fun m -> m "%s %s" (DD.tag_of_distro d) (arch_to_string a))) distro_arches; *)
+  remove_duplicates distro_arches
+  |> List.map (fun (distro, arch) ->
+         let label =
+           Printf.sprintf "%s-%s" (DD.tag_of_distro distro)
+             (arch_to_string arch)
+         in
+         v ~arch label distro)

@@ -39,17 +39,18 @@ module Op = struct
 
   let spec =
     {|
-((from ubuntu)
+((from debian)
  (run
   (network host)
-  (shell "apt update && apt install -y gcc binutils git make gawk sed diffutils"))
+  (shell "apt-get update && apt-get install -yq --no-install-recommends opam ocaml git ca-certificates"))
  (run
   (network host)
-  (shell "git clone --recursive \"https://github.com/benmandrew/ocaml.git\" -b \"trunk\""))
- (workdir "ocaml")
- (run (shell "git reset --hard be27ba8"))
- (run (shell "./configure"))
- (run (shell "make -j 8 && make tests")))
+  (shell "opam init -ya -c 5.0.0 --disable-sandboxing && git clone https://github.com/ocaml-multicore/multicoretests.git"))
+ (workdir "multicoretests")
+ (run
+  (network host)
+  (shell "opam install . --deps-only --with-test -y"))
+ (run (shell "eval $(opam env) && dune build && dune runtest -j1 --no-buffer --display=quiet")))
     |}
 
   let run t job (k : Key.t) () =
@@ -89,7 +90,7 @@ let config ?timeout sr =
   { connection; timeout; on_cancel = ignore }
 
 let v ~ocluster ~(platform : Conf.platform) commit =
-  Current.component "build"
+  Current.component "build %s" platform.label
   |> let> commit in
      let commit = Current_git.Commit.id commit in
      BC.run ocluster { pool = platform.pool; commit } ()
