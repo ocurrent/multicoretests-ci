@@ -52,7 +52,7 @@ let build_with_docker ?ocluster repo commit =
 
 let v ?ocluster ~app () =
   let ocluster =
-    Option.map (Cluster_build.config ~timeout:(Duration.of_hour 1)) ocluster
+    Option.map (Cluster_build.config ~timeout:(Duration.of_hour 5)) ocluster
   in
   let installations = Current_github.App.installations app in
   forall_refs ~installations (build_with_docker ?ocluster)
