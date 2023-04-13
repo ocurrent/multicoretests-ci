@@ -51,19 +51,21 @@ type arch =
 
 module DD = Dockerfile_opam.Distro
 
-type platform = {
-  label : string;
-  builder : Builder.t;
-  pool : string;
-  distro : string;
-  arch : arch;
-  docker_tag : string;
-}
+module Platform = struct
+  type t = {
+    label : string;
+    builder : Builder.t;
+    pool : string;
+    distro : string;
+    arch : arch;
+    docker_tag : string;
+  }
 
-(* TODO Hardcoding the versions for now, this should expand to OV.Releases.recent.
-   Currently we only have base images for these 2 compiler variants. See ocurrent/macos-infra playbook.yml.
-*)
-let macos_distros : platform list =
+  let compare = compare
+  let pp = Fmt.of_to_string (fun t -> t.label)
+end
+
+let macos_platforms : Platform.t list =
   [
     {
       label = "macos-homebrew";
@@ -76,28 +78,11 @@ let macos_distros : platform list =
     {
       label = "macos-homebrew";
       builder = Builders.local;
-      pool = "macos-x86_64";
+      pool = "macos-arm64";
       distro = "macos-homebrew";
-      arch = `X86_64;
+      arch = `Aarch64;
       docker_tag = "homebrew/brew";
     };
-    (* Homebrew doesn't yet seem to have arm64 base images on Dockerhub *)
-    (* {
-         label = "macos-homebrew";
-         builder = Builders.local;
-         pool = "macos-arm64";
-         distro = "macos-homebrew";
-         arch = `Aarch64;
-         docker_tag = "homebrew/brew";
-       };
-       {
-         label = "macos-homebrew";
-         builder = Builders.local;
-         pool = "macos-arm64";
-         distro = "macos-homebrew";
-         arch = `Aarch64;
-         docker_tag = "homebrew/brew";
-       }; *)
   ]
 
 let pool_of_arch = function
@@ -106,13 +91,6 @@ let pool_of_arch = function
   | `S390x -> "linux-s390x"
   | `Ppc64le -> "linux-ppc64"
   | `Riscv64 -> "linux-riscv64"
-
-let arch_to_string = function
-  | `X86_64 | `I386 -> "x86_64"
-  | `Aarch32 | `Aarch64 -> "arm64"
-  | `S390x -> "s390x"
-  | `Ppc64le -> "ppc64"
-  | `Riscv64 -> "riscv64"
 
 let image_of_distro = function
   | `Ubuntu _ -> "ubuntu"
@@ -128,7 +106,7 @@ let image_of_distro = function
 let platforms () =
   let v ?(arch = `X86_64) label distro =
     {
-      arch;
+      Platform.arch;
       label;
       builder = Builders.local;
       pool = pool_of_arch arch;
@@ -137,27 +115,32 @@ let platforms () =
     }
   in
   let distro_arches =
-    DD.active_tier1_distros `X86_64 (* @ DD.active_tier2_distros `X86_64 *)
+    (* DD.active_tier1_distros `X86_64 @ DD.active_tier2_distros `X86_64 *)
+    [ `Debian `V11 ]
     |> List.map (fun d ->
-           DD.distro_arches (Ocaml_version.v 5 0) d
+           DD.distro_arches (Ocaml_version.v 5 0 ~patch:0) d
            |> List.map (fun a -> (d, a)))
     |> List.flatten
   in
   let remove_duplicates =
     let distro_eq (d0, a0) (d1, a1) =
       String.equal
-        (Printf.sprintf "%s-%s" (DD.tag_of_distro d0) (arch_to_string a0))
-        (Printf.sprintf "%s-%s" (DD.tag_of_distro d1) (arch_to_string a1))
+        (Printf.sprintf "%s-%s" (DD.tag_of_distro d0)
+           (Ocaml_version.string_of_arch a0))
+        (Printf.sprintf "%s-%s" (DD.tag_of_distro d1)
+           (Ocaml_version.string_of_arch a1))
     in
     List.fold_left
       (fun l d -> if List.exists (distro_eq d) l then l else d :: l)
       []
   in
-  (* List.iter (fun (d, a) -> Logs.err (fun m -> m "%s %s" (DD.tag_of_distro d) (arch_to_string a))) distro_arches; *)
-  remove_duplicates distro_arches
-  |> List.map (fun (distro, arch) ->
-         let label =
-           Printf.sprintf "%s-%s" (DD.tag_of_distro distro)
-             (arch_to_string arch)
-         in
-         v ~arch label distro)
+  let platforms =
+    remove_duplicates distro_arches
+    |> List.map (fun (distro, arch) ->
+           let label =
+             Printf.sprintf "%s-%s" (DD.tag_of_distro distro)
+               (Ocaml_version.string_of_arch arch)
+           in
+           v ~arch label distro)
+  in
+  platforms @ macos_platforms

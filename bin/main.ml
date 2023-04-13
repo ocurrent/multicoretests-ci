@@ -47,7 +47,7 @@ let build_with_docker ?ocluster repo commit =
          | Some job_id ->
              Hashtbl.add jobs
                (owner, name, Current_git.Commit.hash commit)
-               ("macos-worker-okkkkkk", (state, job_id)))
+               (platform.label, (state, job_id)))
        platforms
 
 let v ?ocluster ~app () =
@@ -58,7 +58,7 @@ let v ?ocluster ~app () =
   forall_refs ~installations (build_with_docker ?ocluster)
 
 let get_job_ids ~owner ~name ~hash =
-  [ fst @@ Hashtbl.find jobs (owner, name, hash) ]
+  [ snd @@ snd @@ Hashtbl.find jobs (owner, name, hash) ]
 
 let run_capnp capnp_listen_address =
   let listen_address =
@@ -77,9 +77,7 @@ let main () config mode app capnp_listen_address github_auth submission_uri =
        let ocluster =
          Option.map (Capnp_rpc_unix.Vat.import_exn vat) submission_uri
        in
-       let engine =
-         Current.Engine.create ~config (v ?ocluster ~app)
-       in
+       let engine = Current.Engine.create ~config (v ?ocluster ~app) in
        let authn = Github.authn github_auth in
        let webhook_secret = Current_github.App.webhook_secret app in
        let has_role =

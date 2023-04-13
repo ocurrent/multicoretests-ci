@@ -16,7 +16,12 @@ module Op = struct
   let id = "ci-ocluster-build"
 
   module Key = struct
-    type t = { pool : string; commit : Current_git.Commit_id.t }
+    type t = {
+      pool : string;
+      arch : Ocaml_version.arch;
+      distro : string;
+      commit : Current_git.Commit_id.t;
+    }
 
     let to_json t =
       `Assoc
@@ -35,23 +40,30 @@ module Op = struct
     Digest.string (String.concat "," packages) |> Digest.to_hex
 
   let get_cache_hint (k : Key.t) =
-    Fmt.str "%s/%a" k.pool Current_git.Commit_id.pp k.commit
+    Fmt.str "%s/%s/%s" k.pool
+      (Ocaml_version.string_of_arch k.arch)
+      (Current_git.Commit_id.hash k.commit)
 
-  let spec =
-    {|
-((from debian)
+  let spec distro =
+    ignore distro;
+    Printf.sprintf
+      {|
+((from %s)
+ (workdir /src)
  (run
   (network host)
   (shell "apt-get update && apt-get install -yq --no-install-recommends opam ocaml git ca-certificates"))
+ (run (shell "ln -f /usr/bin/opam-2.1 /usr/bin/opam"))
+ (user (uid 1000) (gid 1000))
+ (copy (src multicoretests.opam qcheck-lin.opam qcheck-multicoretests-util.opam qcheck-stm.opam) (dst ./))
+ (run (shell "opam init -ya -c 5.0.0 --disable-sandboxing"))
  (run
   (network host)
-  (shell "opam init -ya -c 5.0.0 --disable-sandboxing && git clone https://github.com/ocaml-multicore/multicoretests.git"))
- (workdir "multicoretests")
- (run
-  (network host)
-  (shell "opam install . --deps-only --with-test -y"))
+  (shell "opam pin -y qcheck-multicoretests-util.dev . && opam pin -y qcheck-lin.dev . && opam pin -y qcheck-stm.dev . && opam pin -y multicoretests.dev ."))
+ (copy (src .) (dst .))
  (run (shell "eval $(opam env) && dune build && dune runtest -j1 --no-buffer --display=quiet")))
     |}
+      distro
 
   let run t job (k : Key.t) () =
     Current.Job.on_cancel job (fun reason ->
@@ -60,7 +72,11 @@ module Op = struct
         if reason <> "Job complete" then t.on_cancel reason;
         Lwt.return_unit)
     >>= fun () ->
-    (* let spec_str = Fmt.to_to_string Obuilder_spec.pp spec in *)
+    let spec =
+      match Dockerfile_opam.Distro.distro_of_tag k.distro with
+      | None -> spec "macos-hombrew-ocaml-5.0"
+      | Some _ -> spec "ocaml/opam"
+    in
     let action = Cluster_api.Submission.obuilder_build spec in
     let src = Current_git.Commit_id.(repo k.commit, [ hash k.commit ]) in
     let cache_hint = get_cache_hint k in
@@ -89,8 +105,9 @@ let config ?timeout sr =
   let connection = Current_ocluster.Connection.create sr in
   { connection; timeout; on_cancel = ignore }
 
-let v ~ocluster ~(platform : Conf.platform) commit =
+let v ~ocluster ~platform commit =
+  let { Conf.Platform.pool; arch; distro; _ } = platform in
   Current.component "build %s" platform.label
   |> let> commit in
      let commit = Current_git.Commit.id commit in
-     BC.run ocluster { pool = platform.pool; commit } ()
+     BC.run ocluster { pool; arch; distro; commit } ()
