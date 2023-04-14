@@ -27,6 +27,7 @@ module Op = struct
       `Assoc
         [
           ("pool", `String t.pool);
+          ("arch", `String (Ocaml_version.string_of_arch t.arch));
           ("commit", `String (Current_git.Commit_id.hash t.commit));
         ]
 
@@ -35,9 +36,6 @@ module Op = struct
 
   module Value = Current.Unit
   module Outcome = Current.Unit
-
-  let hash_packages packages =
-    Digest.string (String.concat "," packages) |> Digest.to_hex
 
   let get_cache_hint (k : Key.t) =
     Fmt.str "%s/%s/%s" k.pool
@@ -74,7 +72,9 @@ module Op = struct
     >>!= fun (_ : string) -> Lwt_result.return ()
 
   let pp f ((k : Key.t), _) =
-    Fmt.pf f "test %s/%s" k.pool (Current_git.Commit_id.hash k.commit)
+    Fmt.pf f "test %s/%s/%s" k.pool
+      (Ocaml_version.string_of_arch k.arch)
+      (Current_git.Commit_id.hash k.commit)
 
   let auto_cancel = true
   let latched = true
