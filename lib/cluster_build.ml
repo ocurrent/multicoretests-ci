@@ -44,27 +44,6 @@ module Op = struct
       (Ocaml_version.string_of_arch k.arch)
       (Current_git.Commit_id.hash k.commit)
 
-  let spec distro =
-    ignore distro;
-    Printf.sprintf
-      {|
-((from %s)
- (workdir /src)
- (run
-  (network host)
-  (shell "apt-get update && apt-get install -yq --no-install-recommends opam ocaml git ca-certificates"))
- (run (shell "ln -f /usr/bin/opam-2.1 /usr/bin/opam"))
- (user (uid 1000) (gid 1000))
- (copy (src multicoretests.opam qcheck-lin.opam qcheck-multicoretests-util.opam qcheck-stm.opam) (dst ./))
- (run (shell "opam init -ya -c 5.0.0 --disable-sandboxing"))
- (run
-  (network host)
-  (shell "opam pin -y qcheck-multicoretests-util.dev . && opam pin -y qcheck-lin.dev . && opam pin -y qcheck-stm.dev . && opam pin -y multicoretests.dev ."))
- (copy (src .) (dst .))
- (run (shell "eval $(opam env) && dune build && dune runtest -j1 --no-buffer --display=quiet")))
-    |}
-      distro
-
   let run t job (k : Key.t) () =
     Current.Job.on_cancel job (fun reason ->
         Logs.debug (fun l ->
@@ -73,9 +52,11 @@ module Op = struct
         Lwt.return_unit)
     >>= fun () ->
     let spec =
-      match Dockerfile_opam.Distro.distro_of_tag k.distro with
-      | None -> spec "macos-hombrew-ocaml-5.0"
-      | Some _ -> spec "ocaml/opam"
+      Fmt.to_to_string Obuilder_spec.pp
+      @@
+      match Conf.DD.distro_of_tag k.distro with
+      | None -> Spec.v "macos-homebrew-ocaml-5.0" `Macos k.arch
+      | Some d -> Spec.v "ocaml/opam" (Conf.DD.os_family_of_distro d) k.arch
     in
     let action = Cluster_api.Submission.obuilder_build spec in
     let src = Current_git.Commit_id.(repo k.commit, [ hash k.commit ]) in
