@@ -8,7 +8,22 @@
 
 (package
  (name compiler-ci)
- (synopsis "Run the multicoretests suite on many platforms")
+ (synopsis "Run the multicoretests suite on the GitHub repository")
+ (depends
+  ocaml
+  dune
+  logs
+  fmt
+  capnp-rpc-unix
+  current
+  current_github
+  current_docker
+  (cmdliner (>= 1.1.0)))
+ (allow_empty))
+
+(package
+ (name compiler-ci-local)
+ (synopsis "Run the multicoretests suite on a local repository")
  (depends
   ocaml
   dune
