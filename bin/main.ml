@@ -28,26 +28,34 @@ let get_job_id x =
   let+ md = Current.Analysis.metadata x in
   match md with Some { Current.Metadata.job_id; _ } -> job_id | None -> None
 
+let cartesian_prod l0 l1 =
+  List.(flatten @@ map (fun a -> map (fun b -> (a, b)) l1) l0)
+
+let record_job repo commit (platform : Conf.Platform.t) build =
+  let+ state = Current.state ~hidden:true build
+  and+ job_id = get_job_id build
+  and+ repo
+  and+ commit in
+  let { Current_github.Repo_id.owner; name } = repo in
+  match job_id with
+  | None -> ()
+  | Some job_id ->
+      Hashtbl.add jobs
+        (owner, name, Current_git.Commit.hash commit)
+        (platform.label, (state, job_id))
+
 let build_with_docker ?ocluster repo commit =
+  (* Cartesian product of platforms and desired OCaml versions *)
+  let platforms = cartesian_prod platforms [ "5.0"; "5.1"; "5.2" ] in
   Current.list_seq
   @@ List.map
-       (fun platform ->
+       (fun (platform, version) ->
          let build =
            match ocluster with
            | None -> Build.v commit
-           | Some ocluster -> Cluster_build.v ~ocluster ~platform commit
+           | Some ocluster -> Cluster_build.v ~ocluster ~platform version commit
          in
-         let+ state = Current.state ~hidden:true build
-         and+ job_id = get_job_id build
-         and+ repo
-         and+ commit in
-         let { Current_github.Repo_id.owner; name } = repo in
-         match job_id with
-         | None -> ()
-         | Some job_id ->
-             Hashtbl.add jobs
-               (owner, name, Current_git.Commit.hash commit)
-               (platform.label, (state, job_id)))
+         record_job repo commit platform build)
        platforms
 
 let v ?ocluster ~app () =
@@ -146,7 +154,7 @@ let submission_service =
        ~docv:"FILE" [ "submission-service" ]
 
 let cmd =
-  let doc = "Test the OCaml compiler" in
+  let doc = "CI for multicoretests, run on a GitHub repository" in
   let info = Cmd.info "compiler-ci-service" ~doc in
   Cmd.v info
     Term.(

@@ -1,24 +1,14 @@
 (lang dune 3.7)
 
 (name compiler-ci)
-
 (generate_opam_files true)
-
-(source
- (github username/reponame))
-
-(authors "Author Name")
-
-(maintainers "Maintainer Name")
-
-(license LICENSE)
-
-(documentation https://url/to/documentation)
+(source (github benmandrew/compiler-ci))
+(authors "benmandrew@gmail.com")
+(maintainers "benmandrew@gmail.com")
 
 (package
  (name compiler-ci)
- (synopsis "A short synopsis")
- (description "A longer description")
+ (synopsis "Run the multicoretests suite on many platforms")
  (depends
   ocaml
   dune
@@ -29,13 +19,11 @@
   current_github
   current_docker
   (cmdliner (>= 1.1.0)))
- (tags
-  (topics "to describe" your project)))
+ (allow_empty))
 
 (package
  (name compiler-ci-lib)
- (synopsis "A short synopsis")
- (description "A longer description")
+ (synopsis "Core compiler-ci")
  (depends
   ocaml
   dune
@@ -48,6 +36,4 @@
   current_ocluster
   (cmdliner (>= 1.1.0))
   dockerfile-opam
-  obuilder-spec)
- (tags
-  (topics "to describe" your project)))
+  obuilder-spec))

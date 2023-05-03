@@ -68,7 +68,7 @@ end
 let macos_platforms : Platform.t list =
   [
     {
-      label = "macos-homebrew";
+      label = "macos-amd64";
       builder = Builders.local;
       pool = "macos-x86_64";
       distro = "macos-homebrew";
@@ -76,7 +76,7 @@ let macos_platforms : Platform.t list =
       docker_tag = "homebrew/brew";
     };
     {
-      label = "macos-homebrew";
+      label = "macos-arm64";
       builder = Builders.local;
       pool = "macos-arm64";
       distro = "macos-homebrew";
@@ -124,11 +124,15 @@ let platforms () =
   in
   let remove_duplicates =
     let distro_eq (d0, a0) (d1, a1) =
-      String.equal
-        (Printf.sprintf "%s-%s" (DD.tag_of_distro d0)
-           (Ocaml_version.string_of_arch a0))
-        (Printf.sprintf "%s-%s" (DD.tag_of_distro d1)
-           (Ocaml_version.string_of_arch a1))
+      let a =
+        Printf.sprintf "%s-%s" (DD.tag_of_distro d0)
+          (Ocaml_version.string_of_arch a0)
+      in
+      let b =
+        Printf.sprintf "%s-%s" (DD.tag_of_distro d1)
+          (Ocaml_version.string_of_arch a1)
+      in
+      String.equal a b
     in
     List.fold_left
       (fun l d -> if List.exists (distro_eq d) l then l else d :: l)

@@ -35,13 +35,13 @@ let install_project_deps os arch =
     | `Linux -> Some "/src"
     | `Windows | `Cygwin -> failwith "Windows and Cygwin not supported"
   in
+  let work_dir =
+    match os with
+    | `Macos -> "./src/"
+    | `Linux -> "./"
+    | `Windows | `Cygwin -> failwith "Windows and Cygwin not supported"
+  in
   let setup_pins =
-    let work_dir =
-      match os with
-      | `Macos -> "./src/"
-      | `Linux -> "./"
-      | `Windows | `Cygwin -> failwith "Windows and Cygwin not supported"
-    in
     let copy_opam_files =
       copy
         [
@@ -54,16 +54,17 @@ let install_project_deps os arch =
     in
     let do_pins =
       run ~network ~cache
-        "opam pin -y qcheck-multicoretests-util.dev %s && opam pin -y \
-         qcheck-lin.dev %s && opam pin -y qcheck-stm.dev %s && opam pin -y \
-         multicoretests.dev %s"
+        "opam pin --no-action qcheck-multicoretests-util.dev %s && opam pin \
+         --no-action qcheck-lin.dev %s && opam pin --no-action qcheck-stm.dev \
+         %s && opam pin --no-action multicoretests.dev %s"
         work_dir work_dir work_dir work_dir
     in
     [ copy_opam_files; do_pins ]
   in
   let opam_depext =
     run ~network ~cache
-      "opam update --depexts && opam install --cli=2.1 --depext-only -y ."
+      "opam update --depexts && opam install --cli=2.1 --depext-only -y %s"
+      work_dir
   in
   (if Ocaml_version.arch_is_32bit arch then
      [ shell [ "/usr/bin/linux32"; "/bin/sh"; "-c" ] ]
@@ -72,8 +73,12 @@ let install_project_deps os arch =
     | Some home_dir -> [ Obuilder_spec.workdir home_dir ]
     | None -> [])
   @ [
-      run "%s -f %s/bin/opam-2.1 %s/bin/opam" ln prefix prefix;
-      run "opam init --reinit -ni";
+      run "%s -f %s/bin/opam-2.1 %s/bin/opam && opam init --reinit -ni" ln
+        prefix prefix;
+      run ~network
+        "opam repository add override \
+         https://github.com/shym/custom-opam-repository.git --all-switches \
+         --set-default";
     ]
   @ (match home_dir with
     | Some home_dir -> [ workdir home_dir; run "sudo chown opam /src" ]
@@ -86,7 +91,11 @@ let install_project_deps os arch =
          commit commit;
      ] *)
   @ setup_pins
-  @ [ env "CI" "true"; opam_depext; run ~network ~cache "opam install ." ]
+  @ [
+      env "CI" "true";
+      opam_depext;
+      run ~network ~cache "opam install %s" work_dir;
+    ]
 
 let v base os arch =
   let open Obuilder_spec in
@@ -107,5 +116,7 @@ let v base os arch =
     | `Windows | `Cygwin -> failwith "Windows and Cygwin not supported"
   in
   stage ~from:base
-    ((user_unix ~uid:1000 ~gid:1000 :: install_project_deps os arch)
+    (env "QCHECK_MSG_INTERVAL" "60"
+     :: user_unix ~uid:1000 ~gid:1000
+     :: install_project_deps os arch
     @ [ copy [ "." ] ~dst:home_dir; run_build ])

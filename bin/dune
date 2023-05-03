@@ -1,7 +1,5 @@
-(executable
- (public_name compiler-ci)
- (package compiler-ci)
- (name main)
+(executables
+ (names main local)
  (libraries
   logs.fmt
   logs.cli
@@ -13,4 +11,5 @@
   current.cache
   current_github
   current_docker
-  cmdliner))
+  cmdliner)
+ (modules main local))
