@@ -1,5 +1,7 @@
 (executables
  (names main local)
+ (public_names compiler-ci compiler-ci-local)
+ (package compiler-ci)
  (libraries
   logs.fmt
   logs.cli
