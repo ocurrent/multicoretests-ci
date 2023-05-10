@@ -46,8 +46,7 @@ module Builders = struct
   let local = { Builder.docker_context = None; pool = dev_pool; build_timeout }
 end
 
-type arch =
-  [ `X86_64 | `I386 | `Aarch32 | `Aarch64 | `S390x | `Ppc64le | `Riscv64 ]
+type arch = Ocaml_version.arch
 
 module DD = Dockerfile_opam.Distro
 
@@ -67,7 +66,7 @@ end
 
 let macos_platforms : Platform.t list =
   [
-    {
+    (* {
       label = "macos-amd64";
       builder = Builders.local;
       pool = "macos-x86_64";
@@ -82,15 +81,18 @@ let macos_platforms : Platform.t list =
       distro = "macos-homebrew";
       arch = `Aarch64;
       docker_tag = "homebrew/brew";
-    };
+    }; *)
   ]
 
-let pool_of_arch = function
-  | `X86_64 | `I386 -> "linux-x86_64"
+let pool_of_arch a = match a with
+  (* | `X86_64 | `I386 -> "linux-x86_64" *)
   | `Aarch32 | `Aarch64 -> "linux-arm64"
-  | `S390x -> "linux-s390x"
+  (* | `S390x -> "linux-s390x"
   | `Ppc64le -> "linux-ppc64"
-  | `Riscv64 -> "linux-riscv64"
+  | `Riscv64 -> "linux-riscv64" *)
+  | `X86_64 | `I386 | `S390x | `Ppc64le | `Riscv64 ->
+    failwith
+      (Printf.sprintf "Unsupported architecture: %s" (Ocaml_version.string_of_arch a))
 
 let image_of_distro = function
   | `Ubuntu _ -> "ubuntu"
@@ -104,7 +106,8 @@ let image_of_distro = function
         (Printf.sprintf "Unhandled distro: %s" (DD.tag_of_distro (d :> DD.t)))
 
 let platforms () =
-  let v ?(arch = `X86_64) label distro =
+  (* let v ?(arch = `X86_64) label distro = *)
+  let v ?(arch = `Aarch64) label distro =
     {
       Platform.arch;
       label;
@@ -115,10 +118,10 @@ let platforms () =
     }
   in
   let distro_arches =
-    (* DD.active_tier1_distros `X86_64 @ DD.active_tier2_distros `X86_64 *)
     [ `Debian `V11 ]
     |> List.map (fun d ->
-           DD.distro_arches (Ocaml_version.v 5 0 ~patch:0) d
+           (* DD.distro_arches (Ocaml_version.v 5 0 ~patch:0) d *)
+           [ `Aarch64; `Aarch32 ]
            |> List.map (fun a -> (d, a)))
     |> List.flatten
   in
