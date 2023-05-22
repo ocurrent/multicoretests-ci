@@ -46,9 +46,10 @@ module Builders = struct
   let local = { Builder.docker_context = None; pool = dev_pool; build_timeout }
 end
 
-type arch = Ocaml_version.arch
-
+module OV = Ocaml_version
 module DD = Dockerfile_opam.Distro
+
+type arch = OV.arch
 
 module Platform = struct
   type t = {
@@ -67,13 +68,13 @@ end
 let macos_platforms : Platform.t list =
   [
     (* {
-      label = "macos-amd64";
-      builder = Builders.local;
-      pool = "macos-x86_64";
-      distro = "macos-homebrew";
-      arch = `X86_64;
-      docker_tag = "homebrew/brew";
-    };
+         label = "macos-amd64";
+         builder = Builders.local;
+         pool = "macos-x86_64";
+         distro = "macos-homebrew";
+         arch = `X86_64;
+         docker_tag = "homebrew/brew";
+       }; *)
     {
       label = "macos-arm64";
       builder = Builders.local;
@@ -81,22 +82,23 @@ let macos_platforms : Platform.t list =
       distro = "macos-homebrew";
       arch = `Aarch64;
       docker_tag = "homebrew/brew";
-    }; *)
+    };
   ]
 
-let pool_of_arch a = match a with
+let pool_of_arch a =
+  match a with
   (* | `X86_64 | `I386 -> "linux-x86_64" *)
   | `Aarch32 | `Aarch64 -> "linux-arm64"
   (* | `S390x -> "linux-s390x"
-  | `Ppc64le -> "linux-ppc64"
-  | `Riscv64 -> "linux-riscv64" *)
+     | `Ppc64le -> "linux-ppc64"
+     | `Riscv64 -> "linux-riscv64" *)
   | `X86_64 | `I386 | `S390x | `Ppc64le | `Riscv64 ->
-    failwith
-      (Printf.sprintf "Unsupported architecture: %s" (Ocaml_version.string_of_arch a))
+      failwith
+        (Printf.sprintf "Unsupported architecture: %s" (OV.string_of_arch a))
 
 let image_of_distro = function
-  | `Ubuntu _ -> "ubuntu"
   | `Debian _ -> "debian"
+  | `Ubuntu _ -> "ubuntu"
   | `Alpine _ -> "alpine"
   | `Archlinux _ -> "archlinux"
   | `Fedora _ -> "fedora"
@@ -120,22 +122,16 @@ let platforms () =
   let distro_arches =
     [ `Debian `V11 ]
     |> List.map (fun d ->
-           (* DD.distro_arches (Ocaml_version.v 5 0 ~patch:0) d *)
-           [ `Aarch64; `Aarch32 ]
-           |> List.map (fun a -> (d, a)))
+           (* DD.distro_arches (OV.v 5 0 ~patch:0) d *)
+           [ `Aarch64; `Aarch32 ] |> List.map (fun a -> (d, a)))
     |> List.flatten
   in
   let remove_duplicates =
     let distro_eq (d0, a0) (d1, a1) =
-      let a =
-        Printf.sprintf "%s-%s" (DD.tag_of_distro d0)
-          (Ocaml_version.string_of_arch a0)
+      let fmt d a =
+        Printf.sprintf "%s-%s" (DD.tag_of_distro d) (OV.string_of_arch a)
       in
-      let b =
-        Printf.sprintf "%s-%s" (DD.tag_of_distro d1)
-          (Ocaml_version.string_of_arch a1)
-      in
-      String.equal a b
+      String.equal (fmt d0 a0) (fmt d1 a1)
     in
     List.fold_left
       (fun l d -> if List.exists (distro_eq d) l then l else d :: l)
@@ -146,7 +142,7 @@ let platforms () =
     |> List.map (fun (distro, arch) ->
            let label =
              Printf.sprintf "%s-%s" (DD.tag_of_distro distro)
-               (Ocaml_version.string_of_arch arch)
+               (OV.string_of_arch arch)
            in
            v ~arch label distro)
   in

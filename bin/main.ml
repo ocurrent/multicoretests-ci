@@ -99,8 +99,8 @@ let main () config mode app capnp_listen_address github_auth submission_uri =
          :: Current_web.routes engine
        in
        let site =
-         Current_web.Site.v ?authn ~has_role ~secure_cookies ~name:"multicoretests-ci"
-           routes
+         Current_web.Site.v ?authn ~has_role ~secure_cookies
+           ~name:"multicoretests-ci" routes
        in
        Lwt.choose [ Current.Engine.thread engine; Current_web.run ~mode site ]
      )
