@@ -1,13 +1,13 @@
 (lang dune 3.7)
 
-(name compiler-ci)
+(name multicoretests-ci)
 (generate_opam_files true)
-(source (github benmandrew/compiler-ci))
+(source (github benmandrew/multicoretests-ci))
 (authors "benmandrew@gmail.com")
 (maintainers "benmandrew@gmail.com")
 
 (package
- (name compiler-ci)
+ (name multicoretests-ci)
  (synopsis "Run the multicoretests suite on the GitHub repository")
  (depends
   ocaml
@@ -22,8 +22,8 @@
  (allow_empty))
 
 (package
- (name compiler-ci-lib)
- (synopsis "Core compiler-ci")
+ (name multicoretests-ci-lib)
+ (synopsis "Core multicoretests-ci")
  (depends
   ocaml
   dune

@@ -1,4 +1,4 @@
-open Compiler_ci_lib
+open Multicoretests_ci_lib
 open Lwt.Infix
 
 let platforms = Conf.platforms ()
@@ -48,7 +48,7 @@ let main () config mode repo capnp_listen_address submission_uri =
        let site =
          Current_web.(
            Site.(v ~has_role:allow_all)
-             ~name:"compiler-ci-local" (routes engine))
+             ~name:"multicoretests-ci-local" (routes engine))
        in
        Lwt.choose [ Current.Engine.thread engine; Current_web.run ~mode site ]
      )
@@ -111,7 +111,7 @@ let submission_service =
 
 let cmd =
   let doc = "CI for multicoretests, run on a local Git repository" in
-  let info = Cmd.info "compiler-ci-local" ~doc in
+  let info = Cmd.info "multicoretests-ci-local" ~doc in
   Cmd.v info
     Term.(
       term_result

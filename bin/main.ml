@@ -1,5 +1,5 @@
 open Current.Syntax
-open Compiler_ci_lib
+open Multicoretests_ci_lib
 open Lwt.Infix
 
 let platforms = Conf.platforms ()
@@ -99,7 +99,7 @@ let main () config mode app capnp_listen_address github_auth submission_uri =
          :: Current_web.routes engine
        in
        let site =
-         Current_web.Site.v ?authn ~has_role ~secure_cookies ~name:"compiler-ci"
+         Current_web.Site.v ?authn ~has_role ~secure_cookies ~name:"multicoretests-ci"
            routes
        in
        Lwt.choose [ Current.Engine.thread engine; Current_web.run ~mode site ]
@@ -155,7 +155,7 @@ let submission_service =
 
 let cmd =
   let doc = "CI for multicoretests, run on a GitHub repository" in
-  let info = Cmd.info "compiler-ci-service" ~doc in
+  let info = Cmd.info "multicoretests-ci-service" ~doc in
   Cmd.v info
     Term.(
       term_result

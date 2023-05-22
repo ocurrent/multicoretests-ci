@@ -1,6 +1,6 @@
 (library
- (name compiler_ci_lib)
- (public_name compiler-ci-lib)
+ (name multicoretests_ci_lib)
+ (public_name multicoretests-ci-lib)
  (libraries
   logs.fmt
   logs.cli

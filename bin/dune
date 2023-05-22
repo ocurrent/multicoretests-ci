@@ -1,14 +1,14 @@
 (executables
  (names main local)
- (public_names compiler-ci compiler-ci-local)
- (package compiler-ci)
+ (public_names multicoretests-ci multicoretests-ci-local)
+ (package multicoretests-ci)
  (libraries
   logs.fmt
   logs.cli
   fmt.tty
   fmt.cli
   capnp-rpc-unix
-  compiler-ci-lib
+  multicoretests-ci-lib
   current
   current.cache
   current_github
