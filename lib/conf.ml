@@ -98,11 +98,11 @@ let pool_of_arch a =
 
 let image_of_distro = function
   | `Debian _ -> "debian"
-  | `Ubuntu _ -> "ubuntu"
-  | `Alpine _ -> "alpine"
-  | `Archlinux _ -> "archlinux"
-  | `Fedora _ -> "fedora"
-  | `OpenSUSE _ -> "opensuse/leap"
+  (* | `Ubuntu _ -> "ubuntu"
+     | `Alpine _ -> "alpine"
+     | `Archlinux _ -> "archlinux"
+     | `Fedora _ -> "fedora"
+     | `OpenSUSE _ -> "opensuse/leap" *)
   | d ->
       failwith
         (Printf.sprintf "Unhandled distro: %s" (DD.tag_of_distro (d :> DD.t)))
@@ -119,19 +119,19 @@ let platforms () =
       docker_tag = image_of_distro distro;
     }
   in
+  let fmt_label distro arch =
+    Printf.sprintf "%s-%s" (DD.tag_of_distro distro) (OV.string_of_arch arch)
+  in
   let distro_arches =
     [ `Debian `V11 ]
     |> List.map (fun d ->
            (* DD.distro_arches (OV.v 5 0 ~patch:0) d *)
-           [ `Aarch64; `Aarch32 ] |> List.map (fun a -> (d, a)))
+           [ `Aarch64 ] |> List.map (fun a -> (d, a)))
     |> List.flatten
   in
   let remove_duplicates =
     let distro_eq (d0, a0) (d1, a1) =
-      let fmt d a =
-        Printf.sprintf "%s-%s" (DD.tag_of_distro d) (OV.string_of_arch a)
-      in
-      String.equal (fmt d0 a0) (fmt d1 a1)
+      String.equal (fmt_label d0 a0) (fmt_label d1 a1)
     in
     List.fold_left
       (fun l d -> if List.exists (distro_eq d) l then l else d :: l)
@@ -140,10 +140,7 @@ let platforms () =
   let platforms =
     remove_duplicates distro_arches
     |> List.map (fun (distro, arch) ->
-           let label =
-             Printf.sprintf "%s-%s" (DD.tag_of_distro distro)
-               (OV.string_of_arch arch)
-           in
+           let label = fmt_label distro arch in
            v ~arch label distro)
   in
   platforms @ macos_platforms
