@@ -80,8 +80,9 @@ module Op = struct
     >>!= fun (_ : string) -> Lwt_result.return ()
 
   let pp f ((k : Key.t), _) =
-    Fmt.pf f "test %s/%s/%s" k.pool
+    Fmt.pf f "test %s/%s/%s/%s" k.pool
       (Ocaml_version.string_of_arch k.arch)
+      k.version
       (Current_git.Commit_id.hash k.commit)
 
   let auto_cancel = true
