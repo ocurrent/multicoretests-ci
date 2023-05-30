@@ -16,13 +16,7 @@ let forall_refs ~installations fn =
         refs
         |> Current.list_iter (module Current_github.Api.Commit) @@ fun head ->
            let repo = Current.map Current_github.Api.Commit.repo_id head in
-           let commit =
-             Current_git.fetch @@ Current.map Current_github.Api.Commit.id head
-           in
-           Current.list_iter
-             (module Current.Unit)
-             (fun _ -> Current.return ())
-             (fn repo commit)
+           fn repo head
 
 let get_job_id x =
   let+ md = Current.Analysis.metadata x in
@@ -32,10 +26,13 @@ let cartesian_prod l0 l1 =
   List.(flatten @@ map (fun a -> map (fun b -> (a, b)) l1) l0)
 
 let record_job repo commit (platform : Conf.Platform.t) build =
+  Logs.err (fun m -> m "Here?");
   let+ state = Current.state ~hidden:true build
-  and+ job_id = get_job_id build
+  (* and+ job_id = get_job_id build *)
   and+ repo
   and+ commit in
+  Logs.err (fun m -> m "Here?");
+  let job_id = Some "string" in
   let { Current_github.Repo_id.owner; name } = repo in
   match job_id with
   | None -> ()
@@ -47,23 +44,40 @@ let record_job repo commit (platform : Conf.Platform.t) build =
 let build_with_docker ?ocluster repo commit =
   (* Cartesian product of platforms and desired OCaml versions *)
   let platforms = cartesian_prod platforms [ "5.0"; "5.1"; "5.2" ] in
-  Current.list_seq
-  @@ List.map
-       (fun (platform, version) ->
-         let build =
-           match ocluster with
-           | None -> Build.v commit
-           | Some ocluster -> Cluster_build.v ~ocluster ~platform version commit
-         in
-         record_job repo commit platform build)
-       platforms
+  let builds =
+    Current.list_seq
+    @@ List.map
+         (fun (platform, version) ->
+           let build =
+             match ocluster with
+             (* | None -> Build.v commit *)
+             | None -> failwith "Oops"
+             | Some ocluster ->
+                 Cluster_build.v ~ocluster ~platform version commit
+           in
+           let record = record_job repo commit platform build in
+           let+ pair = Current.pair build record in
+           fst pair)
+         platforms
+  in
+  builds
+
+let v_ref ?ocluster repo head =
+  let src = Current_git.fetch (Current.map Current_github.Api.Commit.id head) in
+  let builds = build_with_docker ?ocluster repo src in
+  let set_github_status =
+    builds
+    |> Github.status_of_state
+    |> Current_github.Api.CheckRun.set_status head "ocaml-ci"
+  in
+  set_github_status
 
 let v ?ocluster ~app () =
   let ocluster =
     Option.map (Cluster_build.config ~timeout:(Duration.of_hour 5)) ocluster
   in
   let installations = Current_github.App.installations app in
-  forall_refs ~installations (build_with_docker ?ocluster)
+  forall_refs ~installations (v_ref ?ocluster)
 
 let get_job_ids ~owner ~name ~hash =
   [ snd @@ snd @@ Hashtbl.find jobs (owner, name, hash) ]

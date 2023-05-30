@@ -106,13 +106,15 @@ let v base os arch =
     | `Windows | `Cygwin -> failwith "Windows and Cygwin not supported"
   in
   let run_build =
+    (* Build all before test to minimise disruption of interleaved compilation.
+       Run with [-j1] to run tests sequentially, as tests are timing- and load-sensitive *)
+    let build_and_test =
+      "eval $(opam env) && dune build && dune runtest -j1 --no-buffer \
+       --display=quiet"
+    in
     match os with
-    | `Macos ->
-        run
-          "cd ./src && opam exec -- dune build @install @check @runtest && rm \
-           -rf _build"
-    | `Linux ->
-        run "opam exec -- dune build @install @check @runtest && rm -rf _build"
+    | `Macos -> run "cd ./src && %s" build_and_test
+    | `Linux -> run "%s" build_and_test
     | `Windows | `Cygwin -> failwith "Windows and Cygwin not supported"
   in
   stage ~from:base
