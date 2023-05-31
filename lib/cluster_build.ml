@@ -1,6 +1,7 @@
 open Current.Syntax
 open Capnp_rpc_lwt
 open Lwt.Infix
+module Platform = Conf.Platform
 
 type t = {
   connection : Current_ocluster.Connection.t;
@@ -95,9 +96,9 @@ let config ?timeout sr =
   let connection = Current_ocluster.Connection.create sr in
   { connection; timeout; on_cancel = ignore }
 
-let build ~ocluster ~platform version commit =
-  let { Conf.Platform.pool; arch; distro; label; _ } = platform in
-  Current.component "build %s-%s" label version
+let build ~ocluster ~platform commit =
+  let { Platform.pool; arch; distro; ocaml_version = version; _ } = platform in
+  Current.component "build %s" (Platform.label platform)
   |> let> commit in
      let commit = Current_git.Commit.id commit in
      BC.run ocluster { pool; arch; distro; version; commit } ()
@@ -106,8 +107,6 @@ let get_job_id x =
   let+ md = Current.Analysis.metadata x in
   match md with Some { Current.Metadata.job_id; _ } -> job_id | None -> None
 
-let v ~ocluster ~platform version commit =
-  let build = build ~ocluster ~platform version commit in
-  let+ state = Current.state ~hidden:true build
-  and+ job_id = get_job_id build in
-  (state, Option.value ~default:"No ID" job_id)
+let v ~ocluster ~platform commit =
+  let+ _ = build ~ocluster ~platform commit in
+  Platform.label platform

@@ -51,11 +51,9 @@ let summarise results =
   results
   |> List.fold_left
        (fun (ok, pending, err, skip) -> function
-         | Ok _, _ -> (ok + 1, pending, err, skip)
-         | Error (`Msg m), l when Astring.String.is_prefix ~affix:"[SKIP]" m ->
-             (ok, pending, err, (m, l) :: skip)
-         | Error (`Msg m), l -> (ok, pending, (m, l) :: err, skip)
-         | Error (`Active _), _ -> (ok, pending + 1, err, skip))
+         | _, Ok _, _ -> (ok + 1, pending, err, skip)
+         | l, Error (`Msg m), _ -> (ok, pending, (m, l) :: err, skip)
+         | _, Error (`Active _), _ -> (ok, pending + 1, err, skip))
        (0, 0, [], [])
   |> fun (ok, pending, err, skip) ->
   if pending > 0 then Error (`Active `Running)
@@ -67,30 +65,32 @@ let summarise results =
     | _, [], _ -> Ok () (* No errors and at least one success *)
     | ok, err, _ -> list_errors ~ok err (* Some errors found - report *)
 
-let pp_fail prefix f m = Fmt.pf f "%s: %s" prefix (Ansi.strip m)
-
 let status_of_state results =
   let+ results in
   let aggregated = summarise results in
-  let pp_status f = function
-    | build, _job_id -> (
-        let label = "Bruh" in
-        (* let job_url = url_variant ~owner ~name ~hash ~variant:label ~gref in *)
-        match build with
-        | Ok _ -> Fmt.pf f "%s [%s (%s)]" "✅" label "passed"
-        | Error (`Msg m) when Astring.String.is_prefix ~affix:"[SKIP]" m ->
-            Fmt.pf f "%s [%s (%s)]" "¯\\_(ツ)_/¯" label "skipped"
-        | Error (`Msg m) ->
-            Fmt.pf f "%s [%s (%a)]" "❌" label (pp_fail "failed") m
-        | Error (`Active _) -> Fmt.pf f "%s [%s (%s)]" "🟠" label "active")
+  let pf f icon label result job_url =
+    match job_url with
+    | None -> Fmt.pf f "%s %s (%s)" icon label result
+    | Some job_url -> Fmt.pf f "%s [%s (%s)](%s)" icon label result job_url
   in
-  let summary =
-    Fmt.str "@[<v>%a@]" (Fmt.list ~sep:Fmt.cut pp_status) results
-    (* (List.sort
-       (fun (x, _) (y, _) ->
-         String.compare x.Build_info.label y.Build_info.label)
-       results) *)
+  let pf_fail f icon label pp m job_url =
+    match job_url with
+    | None -> Fmt.pf f "%s %s (%a)" icon label pp m
+    | Some job_url -> Fmt.pf f "%s [%s (%a)](%s)" icon label pp m job_url
   in
+  let pp_fail prefix f m = Fmt.pf f "%s: %s" prefix (Ansi.strip m) in
+  let pp_status f (label, build, job_id) =
+    let job_url =
+      Option.map
+        (fun s -> Printf.sprintf "http://localhost:8080/job/%s" s)
+        job_id
+    in
+    match build with
+    | Ok _ -> pf f "✅" label "passed" job_url
+    | Error (`Active _) -> pf f "🟠" label "active" job_url
+    | Error (`Msg m) -> pf_fail f "❌" label (pp_fail "failed") m job_url
+  in
+  let summary = Fmt.str "@[<v>%a@]" (Fmt.list ~sep:Fmt.cut pp_status) results in
   match aggregated with
   | Ok _ -> Current_github.Api.CheckRunStatus.v (`Completed `Success) ~summary
   | Error (`Active _) -> Current_github.Api.CheckRunStatus.v `Queued ~summary

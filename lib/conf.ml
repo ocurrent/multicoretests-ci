@@ -26,7 +26,7 @@ module Capnp = struct
     | `Dev -> "./capnp-secrets"
 
   let secret_key = cap_secrets ^ "/secret-key.pem"
-  let cap_file = cap_secrets ^ "/ocaml-ci-admin.cap"
+  let cap_file = cap_secrets ^ "/multicoretests-ci-admin.cap"
   let internal_port = 9000
 end
 
@@ -53,16 +53,26 @@ type arch = OV.arch
 
 module Platform = struct
   type t = {
-    label : string;
     builder : Builder.t;
     pool : string;
     distro : string;
     arch : arch;
     docker_tag : string;
+    ocaml_version : string;
   }
 
   let compare = compare
-  let pp = Fmt.of_to_string (fun t -> t.label)
+
+  let label t =
+    let distro_to_os = function
+      | "debian-11" -> "linux"
+      | "macos-homebrew" -> "macos"
+      | s -> s
+    in
+    Printf.sprintf "%s-%s-%s" (distro_to_os t.distro) (OV.string_of_arch t.arch)
+      t.ocaml_version
+
+  let pp = Fmt.of_to_string label
 end
 
 let macos_platforms : Platform.t list =
@@ -76,12 +86,28 @@ let macos_platforms : Platform.t list =
          docker_tag = "homebrew/brew";
        }; *)
     {
-      label = "macos-arm64";
       builder = Builders.local;
       pool = "macos-arm64";
       distro = "macos-homebrew";
       arch = `Aarch64;
       docker_tag = "homebrew/brew";
+      ocaml_version = "5.0";
+    };
+    {
+      builder = Builders.local;
+      pool = "macos-arm64";
+      distro = "macos-homebrew";
+      arch = `Aarch64;
+      docker_tag = "homebrew/brew";
+      ocaml_version = "5.1";
+    };
+    {
+      builder = Builders.local;
+      pool = "macos-arm64";
+      distro = "macos-homebrew";
+      arch = `Aarch64;
+      docker_tag = "homebrew/brew";
+      ocaml_version = "5.2";
     };
   ]
 
@@ -109,18 +135,15 @@ let image_of_distro = function
 
 let platforms () =
   (* let v ?(arch = `X86_64) label distro = *)
-  let v ?(arch = `Aarch64) label distro =
+  let v ?(arch = `Aarch64) distro ocaml_version =
     {
       Platform.arch;
-      label;
       builder = Builders.local;
       pool = pool_of_arch arch;
       distro = DD.tag_of_distro distro;
       docker_tag = image_of_distro distro;
+      ocaml_version;
     }
-  in
-  let fmt_label distro arch =
-    Printf.sprintf "%s-%s" (DD.tag_of_distro distro) (OV.string_of_arch arch)
   in
   let distro_arches =
     [ `Debian `V11 ]
@@ -130,17 +153,23 @@ let platforms () =
     |> List.flatten
   in
   let remove_duplicates =
+    let fmt_distro_arch distro arch =
+      Printf.sprintf "%s-%s" (DD.tag_of_distro distro) (OV.string_of_arch arch)
+    in
     let distro_eq (d0, a0) (d1, a1) =
-      String.equal (fmt_label d0 a0) (fmt_label d1 a1)
+      String.equal (fmt_distro_arch d0 a0) (fmt_distro_arch d1 a1)
     in
     List.fold_left
       (fun l d -> if List.exists (distro_eq d) l then l else d :: l)
       []
   in
+  let cartesian_prod l0 l1 =
+    List.(flatten @@ map (fun a -> map (fun b -> (a, b)) l1) l0)
+  in
   let platforms =
     remove_duplicates distro_arches
-    |> List.map (fun (distro, arch) ->
-           let label = fmt_label distro arch in
-           v ~arch label distro)
+    |> cartesian_prod [ "5.0"; "5.1"; "5.2" ]
+    |> List.map (fun (ocaml_version, (distro, arch)) ->
+           v ~arch distro ocaml_version)
   in
   platforms @ macos_platforms

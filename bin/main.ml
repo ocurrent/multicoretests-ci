@@ -1,6 +1,7 @@
 open Current.Syntax
 open Multicoretests_ci_lib
 open Lwt.Infix
+module Platform = Conf.Platform
 
 let platforms = Conf.platforms ()
 let jobs = Hashtbl.create 128
@@ -22,45 +23,42 @@ let get_job_id x =
   let+ md = Current.Analysis.metadata x in
   match md with Some { Current.Metadata.job_id; _ } -> job_id | None -> None
 
-let cartesian_prod l0 l1 =
-  List.(flatten @@ map (fun a -> map (fun b -> (a, b)) l1) l0)
-
-let record_job repo commit (platform : Conf.Platform.t) build =
-  Logs.err (fun m -> m "Here?");
+let record_job repo commit (platform : Platform.t) build =
   let+ state = Current.state ~hidden:true build
-  (* and+ job_id = get_job_id build *)
+  and+ job_id = get_job_id build
   and+ repo
   and+ commit in
-  Logs.err (fun m -> m "Here?");
-  let job_id = Some "string" in
   let { Current_github.Repo_id.owner; name } = repo in
   match job_id with
   | None -> ()
   | Some job_id ->
       Hashtbl.add jobs
         (owner, name, Current_git.Commit.hash commit)
-        (platform.label, (state, job_id))
+        (Platform.label platform, (state, job_id))
 
 let build_with_docker ?ocluster repo commit =
   (* Cartesian product of platforms and desired OCaml versions *)
-  let platforms = cartesian_prod platforms [ "5.0"; "5.1"; "5.2" ] in
   let builds =
-    Current.list_seq
-    @@ List.map
-         (fun (platform, version) ->
-           let build =
-             match ocluster with
-             (* | None -> Build.v commit *)
-             | None -> failwith "Oops"
-             | Some ocluster ->
-                 Cluster_build.v ~ocluster ~platform version commit
-           in
-           let record = record_job repo commit platform build in
-           let+ pair = Current.pair build record in
-           fst pair)
-         platforms
+    List.map
+      (fun platform ->
+        let build =
+          match ocluster with
+          (* | None -> Build.v commit *)
+          | None -> failwith "Oops"
+          | Some ocluster -> Cluster_build.v ~ocluster ~platform commit
+        in
+        (* Is this OK? Don't currents need to be bound or something?? IDK *)
+        let _ = record_job repo commit platform build in
+        build)
+      platforms
   in
-  builds
+  List.map2
+    (fun build platform ->
+      let+ state = Current.state ~hidden:true build
+      and+ job_id = get_job_id build in
+      (Platform.label platform, state, job_id))
+    builds platforms
+  |> Current.list_seq
 
 let v_ref ?ocluster repo head =
   let src = Current_git.fetch (Current.map Current_github.Api.Commit.id head) in
@@ -68,7 +66,7 @@ let v_ref ?ocluster repo head =
   let set_github_status =
     builds
     |> Github.status_of_state
-    |> Current_github.Api.CheckRun.set_status head "ocaml-ci"
+    |> Current_github.Api.CheckRun.set_status head "Multicoretests-CI"
   in
   set_github_status
 
