@@ -13,4 +13,5 @@ RUN curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -
 RUN echo 'deb https://download.docker.com/linux/debian buster stable' >> /etc/apt/sources.list
 RUN apt-get update && apt-get install docker-ce docker-buildx-plugin -y --no-install-recommends
 WORKDIR /var/lib/ocurrent
+COPY --from=build /src/_build/install/default/bin/multicoretests-ci /usr/local/bin/
 ENTRYPOINT ["dumb-init", "/usr/local/bin/multicoretests-ci"]
