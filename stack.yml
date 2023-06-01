@@ -1,0 +1,47 @@
+version: '3.1'
+volumes:
+  data:
+  capnp-secrets:
+
+secrets:
+  multicoretests-ci-github-key:
+    external: true
+  multicoretests-ci-oauth:
+    external: true
+  multicoretests-ci-submission.cap:
+    external: true
+  multicoretests-ci-webhook-secret:
+    external: true
+
+services:
+  ci:
+    image: ocurrent/multicoretests-ci:live
+    command: >
+      --github-app-id 337178
+      --github-private-key-file /run/secrets/multicoretests-ci-github-key
+      --github-oauth /run/secrets/multicoretests-ci-oauth
+      --github-webhook-secret-file /run/secrets/multicoretests-ci-webhook-secret
+      --confirm above-average
+      --confirm-auto-release 120
+      --capnp-public-address=tcp:multicoretests.ci.dev:8102 --capnp-listen-address=tcp:0.0.0.0:9000
+      --submission-service /run/secrets/multicoretests-ci-submission.cap
+      --verbosity info
+      --github-account-allowlist 'ocaml-multicore,benmandrew'
+    environment:
+      - "CI_PROFILE=production"
+      - "DOCKER_BUILDKIT=1"
+      - "PROGRESS_NO_TRUNC=1"
+    ports:
+      - '8102:9000'
+    volumes:
+      - 'data:/var/lib/ocurrent'
+      - '/var/run/docker.sock:/var/run/docker.sock'
+      - 'capnp-secrets:/capnp-secrets'
+    secrets:
+      - 'multicoretests-ci-oauth'
+      - 'multicoretests-ci-github-key'
+      - 'multicoretests-ci-submission.cap'
+      - 'multicoretests-ci-solver.cap'
+      - 'multicoretests-ci-webhook-secret'
+    sysctls:
+      - 'net.ipv4.tcp_keepalive_time=60'
