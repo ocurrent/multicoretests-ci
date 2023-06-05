@@ -82,7 +82,8 @@ let status_of_state results =
   let pp_status f (label, build, job_id) =
     let job_url =
       Option.map
-        (fun s -> Printf.sprintf "http://localhost:8080/job/%s" s)
+        (fun s ->
+          Printf.sprintf "https://ocaml-multicoretests.ci.dev:8100/job/%s" s)
         job_id
     in
     match build with
