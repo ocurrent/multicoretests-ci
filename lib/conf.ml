@@ -115,10 +115,10 @@ let pool_of_arch a =
   match a with
   (* | `X86_64 | `I386 -> "linux-x86_64" *)
   | `Aarch32 | `Aarch64 -> "linux-arm64"
-  (* | `S390x -> "linux-s390x"
-     | `Ppc64le -> "linux-ppc64"
+  | `S390x -> "linux-s390x"
+  (* | `Ppc64le -> "linux-ppc64"
      | `Riscv64 -> "linux-riscv64" *)
-  | `X86_64 | `I386 | `S390x | `Ppc64le | `Riscv64 ->
+  | `X86_64 | `I386 | `Ppc64le | `Riscv64 ->
       failwith
         (Printf.sprintf "Unsupported architecture: %s" (OV.string_of_arch a))
 
@@ -134,8 +134,7 @@ let image_of_distro = function
         (Printf.sprintf "Unhandled distro: %s" (DD.tag_of_distro (d :> DD.t)))
 
 let platforms () =
-  (* let v ?(arch = `X86_64) label distro = *)
-  let v ?(arch = `Aarch64) distro ocaml_version =
+  let v ~arch distro ocaml_version =
     {
       Platform.arch;
       builder = Builders.local;
@@ -145,31 +144,15 @@ let platforms () =
       ocaml_version;
     }
   in
-  let distro_arches =
-    [ `Debian `V11 ]
-    |> List.map (fun d ->
-           (* DD.distro_arches (OV.v 5 0 ~patch:0) d *)
-           [ `Aarch64 ] |> List.map (fun a -> (d, a)))
-    |> List.flatten
-  in
-  let remove_duplicates =
-    let fmt_distro_arch distro arch =
-      Printf.sprintf "%s-%s" (DD.tag_of_distro distro) (OV.string_of_arch arch)
-    in
-    let distro_eq (d0, a0) (d1, a1) =
-      String.equal (fmt_distro_arch d0 a0) (fmt_distro_arch d1 a1)
-    in
-    List.fold_left
-      (fun l d -> if List.exists (distro_eq d) l then l else d :: l)
-      []
-  in
-  let cartesian_prod l0 l1 =
-    List.(flatten @@ map (fun a -> map (fun b -> (a, b)) l1) l0)
-  in
   let platforms =
-    remove_duplicates distro_arches
-    |> cartesian_prod [ "5.0"; "5.1"; "5.2" ]
-    |> List.map (fun (ocaml_version, (distro, arch)) ->
+    [
+      ("5.0", `Debian `V11, `Aarch64);
+      ("5.1", `Debian `V11, `Aarch64);
+      ("5.2", `Debian `V11, `Aarch64);
+      ("5.1", `Debian `V11, `S390x);
+      ("5.2", `Debian `V11, `S390x);
+    ]
+    |> List.map (fun (ocaml_version, distro, arch) ->
            v ~arch distro ocaml_version)
   in
   platforms @ macos_platforms
