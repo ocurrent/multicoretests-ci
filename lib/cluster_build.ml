@@ -23,6 +23,7 @@ module Op = struct
       version : string;
       distro : string;
       commit : Current_git.Commit_id.t;
+      opam_repo_commit : Current_git.Commit_id.t;
     }
 
     let to_json t =
@@ -58,12 +59,12 @@ module Op = struct
       @@
       match Conf.DD.distro_of_tag k.distro with
       | None ->
-          Spec.v
+          Spec.v k.opam_repo_commit
             (Printf.sprintf "macos-homebrew-ocaml-%s" k.version)
             `Macos k.arch
       | Some d ->
           let base = Printf.sprintf "ocaml/opam:debian-11-ocaml-%s" k.version in
-          Spec.v base (Conf.DD.os_family_of_distro d) k.arch
+          Spec.v k.opam_repo_commit base (Conf.DD.os_family_of_distro d) k.arch
     in
     let action = Cluster_api.Submission.obuilder_build spec in
     let src = Current_git.Commit_id.(repo k.commit, [ hash k.commit ]) in
@@ -96,17 +97,19 @@ let config ?timeout sr =
   let connection = Current_ocluster.Connection.create sr in
   { connection; timeout; on_cancel = ignore }
 
-let build ~ocluster ~platform commit =
+let build ~ocluster ~platform ~opam_repo_commit commit =
   let { Platform.pool; arch; distro; ocaml_version = version; _ } = platform in
   Current.component "build %s" (Platform.label platform)
-  |> let> commit in
+  |> let> commit and> opam_repo_commit in
      let commit = Current_git.Commit.id commit in
-     BC.run ocluster { pool; arch; distro; version; commit } ()
+     BC.run ocluster
+       { pool; arch; distro; version; commit; opam_repo_commit }
+       ()
 
 let get_job_id x =
   let+ md = Current.Analysis.metadata x in
   match md with Some { Current.Metadata.job_id; _ } -> job_id | None -> None
 
-let v ~ocluster ~platform commit =
-  let+ _ = build ~ocluster ~platform commit in
+let v ~ocluster ~platform ~opam_repo_commit commit =
+  let+ (_ : unit) = build ~ocluster ~platform ~opam_repo_commit commit in
   Platform.label platform

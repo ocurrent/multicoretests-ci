@@ -1,4 +1,4 @@
-let install_project_deps os arch =
+let install_project_deps opam_repo_commit os arch =
   let prefix =
     match os with
     | `Macos -> "~/local"
@@ -75,21 +75,22 @@ let install_project_deps os arch =
   @ [
       run "%s -f %s/bin/opam-2.1 %s/bin/opam && opam init --reinit -ni" ln
         prefix prefix;
+    ]
+  @ (match home_dir with
+    | Some home_dir -> [ workdir home_dir; run "sudo chown opam /src" ]
+    | None -> [])
+  @ [
+      (* Fetch the latest ocaml/opam-repository *)
+      run ~network ~cache
+        "cd ~/opam-repository && (git cat-file -e %s || git fetch origin \
+         master) && git reset -q --hard %s && git log --no-decorate -n1 \
+         --oneline && opam update -u"
+        opam_repo_commit opam_repo_commit;
       run ~network
         "opam repository add override \
          https://github.com/shym/custom-opam-repository.git --all-switches \
          --set-default";
     ]
-  @ (match home_dir with
-    | Some home_dir -> [ workdir home_dir; run "sudo chown opam /src" ]
-    | None -> [])
-  (* @ [
-       run ~network ~cache
-         "cd ~/opam-repository && (git cat-file -e %s || git fetch origin \
-          master) && git reset -q --hard %s && git log --no-decorate -n1 \
-          --oneline && opam update -u"
-         commit commit;
-     ] *)
   @ setup_pins
   @ [
       env "CI" "true";
@@ -97,7 +98,7 @@ let install_project_deps os arch =
       run ~network ~cache "opam install %s" work_dir;
     ]
 
-let v base os arch =
+let v opam_repo_commit base os arch =
   let open Obuilder_spec in
   let home_dir =
     match os with
@@ -117,8 +118,9 @@ let v base os arch =
     | `Linux -> run "%s" build_and_test
     | `Windows | `Cygwin -> failwith "Windows and Cygwin not supported"
   in
+  let opam_repo_commit = Current_git.Commit_id.hash opam_repo_commit in
   stage ~from:base
     (env "QCHECK_MSG_INTERVAL" "60"
      :: user_unix ~uid:1000 ~gid:1000
-     :: install_project_deps os arch
+     :: install_project_deps opam_repo_commit os arch
     @ [ copy [ "." ] ~dst:home_dir; run_build ])

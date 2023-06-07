@@ -6,18 +6,11 @@ module Platform = Conf.Platform
 let platforms = Conf.platforms ()
 let jobs = Hashtbl.create 128
 
-let forall_refs ~installations fn =
-  installations
-  |> Current.list_iter ~collapse_key:"org" (module Current_github.Installation)
-     @@ fun installation ->
-     Current_github.Installation.repositories installation
-     |> Current.list_iter ~collapse_key:"repo" (module Current_github.Api.Repo)
-        @@ fun repo ->
-        let refs = Current_github.Api.Repo.ci_refs repo in
-        refs
-        |> Current.list_iter (module Current_github.Api.Commit) @@ fun head ->
-           let repo = Current.map Current_github.Api.Commit.repo_id head in
-           fn repo head
+let opam_repo_commit =
+  let repo =
+    { Current_github.Repo_id.owner = "ocaml"; name = "opam-repository" }
+  in
+  Current_github.Api.Anonymous.head_of repo (`Ref "refs/heads/master")
 
 let get_job_id x =
   let+ md = Current.Analysis.metadata x in
@@ -36,7 +29,7 @@ let record_job repo commit (platform : Platform.t) build =
         (owner, name, Current_git.Commit.hash commit)
         (Platform.label platform, (state, job_id))
 
-let build_with_docker ?ocluster repo commit =
+let build_with_docker ?ocluster ~opam_repo_commit repo commit =
   (* Cartesian product of platforms and desired OCaml versions *)
   let builds =
     List.map
@@ -45,10 +38,11 @@ let build_with_docker ?ocluster repo commit =
           match ocluster with
           (* | None -> Build.v commit *)
           | None -> failwith "Oops"
-          | Some ocluster -> Cluster_build.v ~ocluster ~platform commit
+          | Some ocluster ->
+              Cluster_build.v ~ocluster ~platform ~opam_repo_commit commit
         in
         (* Is this OK? Don't currents need to be bound or something?? IDK *)
-        let _ = record_job repo commit platform build in
+        let (_ : unit Current.t) = record_job repo commit platform build in
         build)
       platforms
   in
@@ -60,22 +54,32 @@ let build_with_docker ?ocluster repo commit =
     builds platforms
   |> Current.list_seq
 
-let v_ref ?ocluster repo head =
-  let src = Current_git.fetch (Current.map Current_github.Api.Commit.id head) in
-  let builds = build_with_docker ?ocluster repo src in
-  let set_github_status =
-    builds
-    |> Github.status_of_state
-    |> Current_github.Api.CheckRun.set_status head "Multicoretests-CI"
-  in
-  set_github_status
+let forall_refs ~installations fn =
+  installations
+  |> Current.list_iter ~collapse_key:"org" (module Current_github.Installation)
+     @@ fun installation ->
+     Current_github.Installation.repositories installation
+     |> Current.list_iter ~collapse_key:"repo" (module Current_github.Api.Repo)
+        @@ fun repo ->
+        let refs = Current_github.Api.Repo.ci_refs repo in
+        refs
+        |> Current.list_iter (module Current_github.Api.Commit) @@ fun head ->
+           let repo = Current.map Current_github.Api.Commit.repo_id head in
+           fn repo head
+
+let v_ref ?ocluster ~opam_repo_commit repo head =
+  Current_git.fetch (Current.map Current_github.Api.Commit.id head)
+  |> build_with_docker ?ocluster ~opam_repo_commit repo
+  |> Github.status_of_state
+  |> Current_github.Api.CheckRun.set_status head "Multicoretests-CI"
 
 let v ?ocluster ~app () =
   let ocluster =
     Option.map (Cluster_build.config ~timeout:(Duration.of_hour 5)) ocluster
   in
+  Current.with_context opam_repo_commit @@ fun () ->
   let installations = Current_github.App.installations app in
-  forall_refs ~installations (v_ref ?ocluster)
+  forall_refs ~installations (v_ref ?ocluster ~opam_repo_commit)
 
 let get_job_ids ~owner ~name ~hash =
   [ snd @@ snd @@ Hashtbl.find jobs (owner, name, hash) ]
