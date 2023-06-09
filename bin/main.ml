@@ -4,7 +4,7 @@ open Lwt.Infix
 module Platform = Conf.Platform
 
 let platforms = Conf.platforms ()
-let jobs = Hashtbl.create 128
+let jobs = Hashtbl.create 512
 
 let opam_repo_commit =
   let repo =
@@ -30,7 +30,6 @@ let record_job repo commit (platform : Platform.t) build =
         (Platform.label platform, (state, job_id))
 
 let build_with_docker ?ocluster ~opam_repo_commit repo commit =
-  (* Cartesian product of platforms and desired OCaml versions *)
   let builds =
     List.map
       (fun platform ->
@@ -63,7 +62,7 @@ let forall_refs ~installations fn =
         @@ fun repo ->
         let refs = Current_github.Api.Repo.ci_refs repo in
         refs
-        |> Current.list_iter (module Current_github.Api.Commit) @@ fun head ->
+        |> Current.list_iter ~collapse_key:"ref" (module Current_github.Api.Commit) @@ fun head ->
            let repo = Current.map Current_github.Api.Commit.repo_id head in
            fn repo head
 

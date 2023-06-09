@@ -10,14 +10,14 @@ You can observe the results of the tests on GitHub on the corresponding commit, 
 
 The current platforms are:
 
-- MacOS, ARM64, OCaml 5.0
-- MacOS, ARM64, OCaml 5.1~alpha1
-- MacOS, ARM64, OCaml 5.2
-- Linux*, ARM64, OCaml 5.0
-- Linux*, ARM64, OCaml 5.1
-- Linux*, ARM64, OCaml 5.2
-- Linux*, S390x, OCaml 5.1
-- Linux*, S390x, OCaml 5.2
+- MacOS, ARM64, OCaml 5.0.0
+- MacOS, ARM64, OCaml 5.1.0~alpha2
+- MacOS, ARM64, OCaml 5.2.0+trunk
+- Linux*, ARM64, OCaml 5.0.0
+- Linux*, ARM64, OCaml 5.1.0+trunk
+- Linux*, ARM64, OCaml 5.2.0+trunk
+- Linux*, S390x, OCaml 5.1.0+trunk
+- Linux*, S390x, OCaml 5.2.0+trunk
 
 *Specifically Debian 11.
 
