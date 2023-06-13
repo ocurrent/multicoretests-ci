@@ -31,8 +31,8 @@ module Jobs = struct
 
   let get_job_ids hash_fragment =
     let t = Lazy.force db in
-    (* The string '%hash%' matches infix *)
-    let hash_infix = Printf.sprintf "%%%s%%" hash_fragment in
+    (* The string 'hash%' matches prefix *)
+    let hash_infix = Printf.sprintf "%s%%" hash_fragment in
     Db.query t.get_job_ids Sqlite3.Data.[ TEXT hash_infix ]
     |> List.map @@ function
        | Sqlite3.Data.[ TEXT label; TEXT hash; TEXT id ] -> (label, hash, id)
