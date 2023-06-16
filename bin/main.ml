@@ -33,12 +33,11 @@ let build_with_docker ?ocluster ~opam_repo_commit commit =
     let build =
       match ocluster with
       (* | None -> Build.v commit *)
-      | None -> failwith "Oops"
+      | None -> failwith "Local building not supported"
       | Some ocluster ->
           Cluster_build.v ~ocluster ~platform ~opam_repo_commit commit
     in
     let _ = record_job commit platform build in
-    (* Current.pair build record |> Current.map fst *)
     build
   in
   List.map
