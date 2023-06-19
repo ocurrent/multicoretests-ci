@@ -116,9 +116,9 @@ let pool_of_arch a =
   (* | `X86_64 | `I386 -> "linux-x86_64" *)
   | `Aarch32 | `Aarch64 -> "linux-arm64"
   | `S390x -> "linux-s390x"
-  (* | `Ppc64le -> "linux-ppc64"
-     | `Riscv64 -> "linux-riscv64" *)
-  | `X86_64 | `I386 | `Ppc64le | `Riscv64 ->
+  | `Ppc64le -> "linux-ppc64"
+     (* | `Riscv64 -> "linux-riscv64" *)
+  | `X86_64 | `I386 | `Riscv64 ->
       failwith
         (Printf.sprintf "Unsupported architecture: %s" (OV.string_of_arch a))
 
@@ -151,6 +151,7 @@ let platforms () =
       ("5.2", `Debian `V11, `Aarch64);
       ("5.1", `Debian `V11, `S390x);
       ("5.2", `Debian `V11, `S390x);
+      ("5.2", `Debian `V11, `Ppc64le);
     ]
     |> List.map (fun (ocaml_version, distro, arch) ->
            v ~arch distro ocaml_version)
