@@ -62,7 +62,9 @@ let forall_refs ~installations fn =
         @@ fun repo ->
         let refs = Current_github.Api.Repo.ci_refs repo in
         refs
-        |> Current.list_iter ~collapse_key:"ref" (module Current_github.Api.Commit) @@ fun head ->
+        |> Current.list_iter ~collapse_key:"ref"
+             (module Current_github.Api.Commit)
+           @@ fun head ->
            let repo = Current.map Current_github.Api.Commit.repo_id head in
            fn repo head
 
