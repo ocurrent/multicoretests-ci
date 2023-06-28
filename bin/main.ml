@@ -6,6 +6,7 @@ module Platform = Conf.Platform
 let platforms = Conf.platforms ()
 let jobs = Hashtbl.create 512
 
+(** Latest commit of opam repository *)
 let opam_repo_commit =
   let repo =
     { Current_github.Repo_id.owner = "ocaml"; name = "opam-repository" }
@@ -16,41 +17,36 @@ let get_job_id x =
   let+ md = Current.Analysis.metadata x in
   match md with Some { Current.Metadata.job_id; _ } -> job_id | None -> None
 
-let record_job repo commit (platform : Platform.t) build =
+let record_job commit (platform : Platform.t) build =
   let+ state = Current.state ~hidden:true build
   and+ job_id = get_job_id build
-  and+ repo
   and+ commit in
-  let { Current_github.Repo_id.owner; name } = repo in
   match job_id with
   | None -> ()
   | Some job_id ->
       Hashtbl.add jobs
-        (owner, name, Current_git.Commit.hash commit)
-        (Platform.label platform, (state, job_id))
+        (Current_git.Commit.hash commit)
+        (Platform.label platform, state, job_id)
 
-let build_with_docker ?ocluster ~opam_repo_commit repo commit =
-  let builds =
-    List.map
-      (fun platform ->
-        let build =
-          match ocluster with
-          (* | None -> Build.v commit *)
-          | None -> failwith "Oops"
-          | Some ocluster ->
-              Cluster_build.v ~ocluster ~platform ~opam_repo_commit commit
-        in
-        (* Is this OK? Don't currents need to be bound or something?? IDK *)
-        let (_ : unit Current.t) = record_job repo commit platform build in
-        build)
-      platforms
+let build_with_docker ?ocluster ~opam_repo_commit commit =
+  let build platform =
+    let build =
+      match ocluster with
+      (* | None -> Build.v commit *)
+      | None -> failwith "Local building not supported"
+      | Some ocluster ->
+          Cluster_build.v ~ocluster ~platform ~opam_repo_commit commit
+    in
+    let _ = record_job commit platform build in
+    build
   in
-  List.map2
-    (fun build platform ->
+  List.map
+    (fun platform ->
+      let build = build platform in
       let+ state = Current.state ~hidden:true build
       and+ job_id = get_job_id build in
-      (Platform.label platform, state, job_id))
-    builds platforms
+      (platform, state, job_id))
+    platforms
   |> Current.list_seq
 
 let forall_refs ~installations fn =
@@ -64,13 +60,24 @@ let forall_refs ~installations fn =
         refs
         |> Current.list_iter ~collapse_key:"ref"
              (module Current_github.Api.Commit)
-           @@ fun head ->
-           let repo = Current.map Current_github.Api.Commit.repo_id head in
-           fn repo head
+           @@ fun head -> fn head
 
-let v_ref ?ocluster ~opam_repo_commit repo head =
-  Current_git.fetch (Current.map Current_github.Api.Commit.id head)
-  |> build_with_docker ?ocluster ~opam_repo_commit repo
+let v_ref ?ocluster ~opam_repo_commit head =
+  let builds =
+    Current_git.fetch (Current.map Current_github.Api.Commit.id head)
+    |> build_with_docker ?ocluster ~opam_repo_commit
+  in
+  let hash = Current.map Current_github.Api.Commit.hash head in
+  Current.pair builds hash
+  |> Current.map (fun (builds, hash) ->
+         List.iter
+           (fun (platform, _, job_id) ->
+             Option.iter (fun id -> Commits.record_job platform hash id) job_id)
+           builds;
+         builds)
+  |> Current.map
+       (List.map (fun (platform, state, job_id) ->
+            (Platform.label platform, state, job_id)))
   |> Github.status_of_state
   |> Current_github.Api.CheckRun.set_status head "Multicoretests-CI"
 
@@ -82,8 +89,9 @@ let v ?ocluster ~app () =
   let installations = Current_github.App.installations app in
   forall_refs ~installations (v_ref ?ocluster ~opam_repo_commit)
 
-let get_job_ids ~owner ~name ~hash =
-  [ snd @@ snd @@ Hashtbl.find jobs (owner, name, hash) ]
+let get_job_ids ~owner:_ ~name:_ ~hash =
+  let _, _, job_id = Hashtbl.find jobs hash in
+  [ job_id ]
 
 let run_capnp capnp_listen_address =
   let listen_address =
@@ -110,10 +118,12 @@ let main () config mode app capnp_listen_address github_auth submission_uri =
          else Github.has_role
        in
        let secure_cookies = github_auth <> None in
+       Commits.init ();
        let routes =
          Github.webhook_route ~engine ~get_job_ids ~webhook_secret
          :: Github.login_route github_auth
          :: Current_web.routes engine
+         @ Commits.routes ()
        in
        let site =
          Current_web.Site.v ?authn ~has_role ~secure_cookies
