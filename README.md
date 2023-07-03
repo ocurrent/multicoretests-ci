@@ -18,6 +18,7 @@ The current platforms are:
 - Linux*, ARM64, OCaml 5.2.0+trunk
 - Linux*, S390x, OCaml 5.1.0+trunk
 - Linux*, S390x, OCaml 5.2.0+trunk
+- Linux*, PPC64LE, OCaml 5.2.0+trunk
 
 *Specifically Debian 11.
 

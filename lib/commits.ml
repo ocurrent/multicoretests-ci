@@ -132,7 +132,9 @@ let render_page ctx =
                    [
                      tr
                        [
-                         th [ txt "Platform" ]; th [ txt "Job" ]; th [ txt "Hash" ];
+                         th [ txt "Platform" ];
+                         th [ txt "Job" ];
+                         th [ txt "Hash" ];
                        ];
                    ])
               (List.map render_row jobs);
