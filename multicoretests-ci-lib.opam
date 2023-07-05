@@ -6,7 +6,7 @@ authors: ["benmandrew@gmail.com"]
 homepage: "https://github.com/benmandrew/multicoretests-ci"
 bug-reports: "https://github.com/benmandrew/multicoretests-ci/issues"
 depends: [
-  "ocaml"
+  "ocaml" {>= "4.14"}
   "dune" {>= "3.7"}
   "logs"
   "fmt"

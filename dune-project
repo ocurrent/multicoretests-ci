@@ -10,7 +10,7 @@
  (name multicoretests-ci)
  (synopsis "Run the multicoretests suite on the GitHub repository")
  (depends
-  ocaml
+  (ocaml (>= 4.14))
   dune
   logs
   fmt
@@ -25,7 +25,7 @@
  (name multicoretests-ci-lib)
  (synopsis "Core multicoretests-ci")
  (depends
-  ocaml
+  (ocaml (>= 4.14))
   dune
   logs
   fmt
