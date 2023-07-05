@@ -15,9 +15,9 @@
   logs
   fmt
   capnp-rpc-unix
-  current
-  current_github
-  current_docker
+  (current (>= 0.6.4))
+  (current_github (>= 0.6.4))
+  (current_docker (>= 0.6.4))
   (cmdliner (>= 1.1.0)))
  (allow_empty))
 
@@ -30,10 +30,10 @@
   logs
   fmt
   capnp-rpc-lwt
-  current
-  current_github
-  current_docker
-  current_ocluster
+  (current (>= 0.6.4))
+  (current_github (>= 0.6.4))
+  (current_docker (>= 0.6.4))
+  (current_ocluster (>= 0.2.1))
   (cmdliner (>= 1.1.0))
   (dockerfile-opam (>= 8.2.1))
   (obuilder-spec (>= 0.5.1))
