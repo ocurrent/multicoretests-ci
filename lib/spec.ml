@@ -121,7 +121,7 @@ let v opam_repo_commit base os arch =
   let opam_repo_commit = Current_git.Commit_id.hash opam_repo_commit in
   stage ~from:base
     (env "QCHECK_MSG_INTERVAL" "60"
-     :: run "eval $(opam env) && ocaml --version && opam --version"
      :: user_unix ~uid:1000 ~gid:1000
      :: install_project_deps opam_repo_commit os arch
-    @ [ copy [ "." ] ~dst:home_dir; run_build ])
+    @ [ run "eval $(opam env) && opam exec -- ocamlc -config && opam config list && opam list --columns=name,installed-version,repository,synopsis-or-target";
+        copy [ "." ] ~dst:home_dir; run_build ])
