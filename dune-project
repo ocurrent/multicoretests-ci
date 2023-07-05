@@ -36,4 +36,5 @@
   current_ocluster
   (cmdliner (>= 1.1.0))
   dockerfile-opam
-  obuilder-spec))
+  obuilder-spec
+  ocaml-version))

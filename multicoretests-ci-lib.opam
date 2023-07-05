@@ -18,6 +18,7 @@ depends: [
   "cmdliner" {>= "1.1.0"}
   "dockerfile-opam"
   "obuilder-spec"
+  "ocaml-version"
   "odoc" {with-doc}
 ]
 build: [
