@@ -123,5 +123,11 @@ let v opam_repo_commit base os arch =
     (env "QCHECK_MSG_INTERVAL" "60"
      :: user_unix ~uid:1000 ~gid:1000
      :: install_project_deps opam_repo_commit os arch
-    @ [ run "eval $(opam env) && opam exec -- ocamlc -config && opam config list && opam list --columns=name,installed-version,repository,synopsis-or-target";
-        copy [ "." ] ~dst:home_dir; run_build ])
+    @ [
+        run
+          "eval $(opam env) && opam exec -- ocamlc -config && opam config list \
+           && opam list \
+           --columns=name,installed-version,repository,synopsis-or-target";
+        copy [ "." ] ~dst:home_dir;
+        run_build;
+      ])
