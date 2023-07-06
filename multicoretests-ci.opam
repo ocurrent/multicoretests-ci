@@ -6,14 +6,14 @@ authors: ["benmandrew@gmail.com"]
 homepage: "https://github.com/benmandrew/multicoretests-ci"
 bug-reports: "https://github.com/benmandrew/multicoretests-ci/issues"
 depends: [
-  "ocaml"
+  "ocaml" {>= "4.14"}
   "dune" {>= "3.7"}
   "logs"
   "fmt"
   "capnp-rpc-unix"
-  "current"
-  "current_github"
-  "current_docker"
+  "current" {>= "0.6.4"}
+  "current_github" {>= "0.6.4"}
+  "current_docker" {>= "0.6.4"}
   "cmdliner" {>= "1.1.0"}
   "odoc" {with-doc}
 ]
