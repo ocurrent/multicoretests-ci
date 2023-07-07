@@ -41,7 +41,7 @@ module Op = struct
  (run
   (network host)
   (shell "opam install . --deps-only --with-test -y"))
- (run (shell "eval $(opam env) && dune build && dune runtest -j1 --no-buffer --display=quiet")))
+ (run (shell "eval $(opam env) && dune build && dune runtest -j1 --no-buffer --display=quiet test/ && dune build @ci -j1 --no-buffer --display=quiet --error-reporting=twice")))
     |}
 
   let run { docker_context; pool; build_timeout } job commit () =

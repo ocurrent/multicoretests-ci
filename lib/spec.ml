@@ -111,7 +111,8 @@ let v opam_repo_commit base os arch =
        Run with [-j1] to run tests sequentially, as tests are timing- and load-sensitive *)
     let build_and_test =
       "eval $(opam env) && dune build && dune runtest -j1 --no-buffer \
-       --display=quiet"
+       --display=quiet test/ && dune build @ci -j1 --no-buffer --display=quiet \
+       --error-reporting=twice"
     in
     match os with
     | `Macos -> run "cd ./src && %s" build_and_test
