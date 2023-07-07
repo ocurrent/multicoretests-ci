@@ -1,3 +1,5 @@
+open Current.Syntax
+
 let ci_profile =
   match Sys.getenv_opt "CI_PROFILE" with
   | Some "production" -> `Production
@@ -58,19 +60,28 @@ module Platform = struct
     distro : string;
     arch : arch;
     docker_tag : string;
+    docker_tag_with_digest : string option;
     ocaml_version : string;
   }
 
   let compare = compare
 
+  let distro_to_os = function
+    | "debian-11" -> "linux"
+    | "macos-homebrew" -> "macos"
+    | s ->
+        failwith
+          (Printf.sprintf
+             "Unexpected distro: '%s'. Must be one of: 'debian-11', \
+              'macos-homebrew'"
+             s)
+
   let label t =
-    let distro_to_os = function
-      | "debian-11" -> "linux"
-      | "macos-homebrew" -> "macos"
-      | s -> s
-    in
     Printf.sprintf "%s-%s-%s" (distro_to_os t.distro) (OV.string_of_arch t.arch)
       t.ocaml_version
+
+  let docker_label t =
+    Printf.sprintf "ocaml/opam:%s-ocaml-%s" t.distro t.ocaml_version
 
   let pp = Fmt.of_to_string label
 end
@@ -91,6 +102,7 @@ let macos_platforms : Platform.t list =
       distro = "macos-homebrew";
       arch = `Aarch64;
       docker_tag = "homebrew/brew";
+      docker_tag_with_digest = None;
       ocaml_version = "5.0";
     };
     {
@@ -99,6 +111,7 @@ let macos_platforms : Platform.t list =
       distro = "macos-homebrew";
       arch = `Aarch64;
       docker_tag = "homebrew/brew";
+      docker_tag_with_digest = None;
       ocaml_version = "5.1";
     };
     {
@@ -107,17 +120,29 @@ let macos_platforms : Platform.t list =
       distro = "macos-homebrew";
       arch = `Aarch64;
       docker_tag = "homebrew/brew";
+      docker_tag_with_digest = None;
       ocaml_version = "5.2";
     };
   ]
 
-let pool_of_arch a =
-  match a with
-  (* | `X86_64 | `I386 -> "linux-x86_64" *)
+let pool_of_arch : arch -> string = function
+  (* | `X86_64 | `I386 -> "linux-x86_64"
+     | `Riscv64 -> "linux-riscv64" *)
   | `Aarch32 | `Aarch64 -> "linux-arm64"
   | `S390x -> "linux-s390x"
-  | `Ppc64le -> "linux-ppc64" (* | `Riscv64 -> "linux-riscv64" *)
-  | `X86_64 | `I386 | `Riscv64 ->
+  | `Ppc64le -> "linux-ppc64"
+  | (`X86_64 | `I386 | `Riscv64) as a ->
+      failwith
+        (Printf.sprintf "Unsupported architecture: %s" (OV.string_of_arch a))
+
+let string_of_arch : arch -> string = function
+  | `X86_64 -> "amd64"
+  | `I386 -> "386"
+  | `Aarch32 -> "arm"
+  | `Aarch64 -> "arm64"
+  | `S390x -> "s390x"
+  | `Ppc64le -> "ppc64le"
+  | `Riscv64 as a ->
       failwith
         (Printf.sprintf "Unsupported architecture: %s" (OV.string_of_arch a))
 
@@ -132,14 +157,37 @@ let image_of_distro = function
       failwith
         (Printf.sprintf "Unhandled distro: %s" (DD.tag_of_distro (d :> DD.t)))
 
+let get_digests platforms =
+  let schedule = Current_cache.Schedule.v ~valid_for:(Duration.of_day 30) () in
+  let f (p : Platform.t) =
+    match Platform.distro_to_os p.distro with
+    | "linux" ->
+        Current.component "peek@,%s %s %s" p.distro p.ocaml_version
+          (string_of_arch p.arch)
+        |> (let> () = Current.return () in
+            let docker_label = Platform.docker_label p in
+            Current_docker.Raw.peek ~docker_context:None ~schedule
+              ~arch:(string_of_arch p.arch) docker_label)
+        |> Current.map Option.some
+    | _ -> Current.return None
+  in
+  Current.list_seq @@ List.map f platforms
+  |> Current.map
+       (List.map2
+          (fun (p : Platform.t) docker_tag_with_digest ->
+            { p with docker_tag_with_digest })
+          platforms)
+
 let platforms () =
   let v ~arch distro ocaml_version =
+    let distro_tag = DD.tag_of_distro distro in
     {
       Platform.arch;
       builder = Builders.local;
       pool = pool_of_arch arch;
-      distro = DD.tag_of_distro distro;
+      distro = distro_tag;
       docker_tag = image_of_distro distro;
+      docker_tag_with_digest = None;
       ocaml_version;
     }
   in
@@ -155,4 +203,4 @@ let platforms () =
     |> List.map (fun (ocaml_version, distro, arch) ->
            v ~arch distro ocaml_version)
   in
-  platforms @ macos_platforms
+  platforms @ macos_platforms |> get_digests
