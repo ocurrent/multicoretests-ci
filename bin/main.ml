@@ -28,7 +28,7 @@ let record_job commit (platform : Platform.t) build =
         (Current_git.Commit.hash commit)
         (Platform.label platform, state, job_id)
 
-let build_with_docker ?ocluster ~opam_repo_commit commit =
+let build_with_docker ?ocluster ~opam_repo_commit ~platforms commit =
   let build platform =
     let build =
       match ocluster with
@@ -62,10 +62,10 @@ let forall_refs ~installations fn =
              (module Current_github.Api.Commit)
            @@ fun head -> fn head
 
-let v_ref ?ocluster ~opam_repo_commit head =
+let v_ref ?ocluster ~opam_repo_commit ~platforms head =
   let builds =
     Current_git.fetch (Current.map Current_github.Api.Commit.id head)
-    |> build_with_docker ?ocluster ~opam_repo_commit
+    |> build_with_docker ?ocluster ~opam_repo_commit ~platforms
   in
   let hash = Current.map Current_github.Api.Commit.hash head in
   Current.pair builds hash
@@ -86,8 +86,12 @@ let v ?ocluster ~app () =
     Option.map (Cluster_build.config ~timeout:(Duration.of_hour 5)) ocluster
   in
   Current.with_context opam_repo_commit @@ fun () ->
+  Current.with_context platforms @@ fun () ->
   let installations = Current_github.App.installations app in
-  forall_refs ~installations (v_ref ?ocluster ~opam_repo_commit)
+  Current.bind
+    (fun platforms ->
+      forall_refs ~installations (v_ref ?ocluster ~opam_repo_commit ~platforms))
+    platforms
 
 let get_job_ids ~owner:_ ~name:_ ~hash =
   let _, _, job_id = Hashtbl.find jobs hash in

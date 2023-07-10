@@ -73,8 +73,8 @@ let install_project_deps opam_repo_commit os arch =
     | Some home_dir -> [ Obuilder_spec.workdir home_dir ]
     | None -> [])
   @ [
-      run "%s -f %s/bin/opam-2.1 %s/bin/opam && opam init --reinit -ni" ln
-        prefix prefix;
+      run ~network "%s -f %s/bin/opam-2.1 %s/bin/opam && opam init --reinit -ni"
+        ln prefix prefix;
     ]
   @ (match home_dir with
     | Some home_dir -> [ workdir home_dir; run "sudo chown opam /src" ]
