@@ -93,9 +93,9 @@ let v ?ocluster ~app () =
       forall_refs ~installations (v_ref ?ocluster ~opam_repo_commit ~platforms))
     platforms
 
-let get_job_ids ~owner:_ ~name:_ ~hash =
+let get_job_ids ~owner ~name ~hash =
   let _, _, job_id = Hashtbl.find jobs hash in
-  [ job_id ]
+  [ owner; name; job_id ]
 
 let run_capnp capnp_listen_address =
   let listen_address =
