@@ -3,12 +3,13 @@ let install_project_deps opam_repo_commit os arch =
     match os with
     | `Macos -> "~/local"
     | `Linux -> "/usr"
+    | `Freebsd -> "/usr/local"
     | `Windows | `Cygwin -> failwith "Windows and Cygwin not supported"
   in
   let ln =
     match os with
     | `Macos -> "ln"
-    | `Linux -> "sudo ln"
+    | `Linux | `Freebsd -> "sudo ln"
     | `Windows | `Cygwin -> failwith "Windows and Cygwin not supported"
   in
   let open Obuilder_spec in
@@ -26,19 +27,24 @@ let install_project_deps opam_repo_commit os arch =
           Obuilder_spec.Cache.v "homebrew"
             ~target:"/Users/mac1000/Library/Caches/Homebrew";
         ]
+    | `Freebsd ->
+        [
+          Obuilder_spec.Cache.v "opam-archives"
+            ~target:"/usr/home/opam/.opam/download-cache";
+        ]
     | `Windows | `Cygwin -> failwith "Windows and Cygwin not supported"
   in
   let network = [ "host" ] in
   let home_dir =
     match os with
     | `Macos -> None
-    | `Linux -> Some "/src"
+    | `Linux | `Freebsd -> Some "/src"
     | `Windows | `Cygwin -> failwith "Windows and Cygwin not supported"
   in
   let work_dir =
     match os with
     | `Macos -> "./src/"
-    | `Linux -> "./"
+    | `Linux | `Freebsd -> "./"
     | `Windows | `Cygwin -> failwith "Windows and Cygwin not supported"
   in
   let setup_pins =
@@ -103,7 +109,7 @@ let v opam_repo_commit base os arch =
   let home_dir =
     match os with
     | `Macos -> "./src"
-    | `Linux -> "/src"
+    | `Linux | `Freebsd -> "/src"
     | `Windows | `Cygwin -> failwith "Windows and Cygwin not supported"
   in
   let run_build =
@@ -116,7 +122,7 @@ let v opam_repo_commit base os arch =
     in
     match os with
     | `Macos -> run "cd ./src && %s" build_and_test
-    | `Linux -> run "%s" build_and_test
+    | `Linux | `Freebsd -> run "%s" build_and_test
     | `Windows | `Cygwin -> failwith "Windows and Cygwin not supported"
   in
   let opam_repo_commit = Current_git.Commit_id.hash opam_repo_commit in
