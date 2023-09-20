@@ -69,11 +69,12 @@ module Platform = struct
   let distro_to_os = function
     | "debian-11" -> "linux"
     | "macos-homebrew" -> "macos"
+    | "freebsd" -> "freebsd"
     | s ->
         failwith
           (Printf.sprintf
              "Unexpected distro: '%s'. Must be one of: 'debian-11', \
-              'macos-homebrew'"
+              'macos-homebrew', 'freebsd'"
              s)
 
   let label t =
@@ -122,6 +123,19 @@ let macos_platforms : Platform.t list =
       docker_tag = "homebrew/brew";
       docker_tag_with_digest = None;
       ocaml_version = "5.2";
+    };
+  ]
+
+let freebsd_platforms : Platform.t list =
+  [
+    {
+      builder = Builders.local;
+      pool = "freebsd-x86_64";
+      distro = "freebsd";
+      arch = `X86_64;
+      docker_tag = "homebrew/brew";
+      docker_tag_with_digest = None;
+      ocaml_version = "5.1";
     };
   ]
 
@@ -203,4 +217,4 @@ let platforms () =
     |> List.map (fun (ocaml_version, distro, arch) ->
            v ~arch distro ocaml_version)
   in
-  platforms @ macos_platforms |> get_digests
+  platforms @ macos_platforms @ freebsd_platforms |> get_digests

@@ -48,6 +48,26 @@ module Op = struct
       k.version
       (Current_git.Commit_id.hash k.commit)
 
+  let spec (k : Key.t) =
+    Fmt.to_to_string Obuilder_spec.pp
+    @@
+    match Conf.DD.distro_of_tag k.distro with
+    | None ->
+        let os_family =
+          if String.equal k.distro "macos-homebrew" then `Macos
+          else if String.equal k.distro "freebsd" then `Freebsd
+          else
+            raise
+              (Failure (Printf.sprintf "Distro '%s' is not available" k.distro))
+        in
+        Spec.v k.opam_repo_commit
+          (Printf.sprintf "%s-ocaml-%s" k.distro k.version)
+          os_family k.arch
+    | Some d ->
+        Spec.v k.opam_repo_commit k.docker_tag
+          (Conf.DD.os_family_of_distro d)
+          k.arch
+
   let run t job (k : Key.t) () =
     Current.Job.on_cancel job (fun reason ->
         Logs.debug (fun l ->
@@ -55,19 +75,7 @@ module Op = struct
         if reason <> "Job complete" then t.on_cancel reason;
         Lwt.return_unit)
     >>= fun () ->
-    let spec =
-      Fmt.to_to_string Obuilder_spec.pp
-      @@
-      match Conf.DD.distro_of_tag k.distro with
-      | None ->
-          Spec.v k.opam_repo_commit
-            (Printf.sprintf "macos-homebrew-ocaml-%s" k.version)
-            `Macos k.arch
-      | Some d ->
-          Spec.v k.opam_repo_commit k.docker_tag
-            (Conf.DD.os_family_of_distro d)
-            k.arch
-    in
+    let spec = spec k in
     let action = Cluster_api.Submission.obuilder_build spec in
     let src = Current_git.Commit_id.(repo k.commit, [ hash k.commit ]) in
     let cache_hint = get_cache_hint k in
