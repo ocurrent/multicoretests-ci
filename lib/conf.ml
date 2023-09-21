@@ -133,7 +133,16 @@ let freebsd_platforms : Platform.t list =
       pool = "freebsd-x86_64";
       distro = "freebsd";
       arch = `X86_64;
-      docker_tag = "homebrew/brew";
+      docker_tag = "freebsd";
+      docker_tag_with_digest = None;
+      ocaml_version = "5.0";
+    };
+    {
+      builder = Builders.local;
+      pool = "freebsd-x86_64";
+      distro = "freebsd";
+      arch = `X86_64;
+      docker_tag = "freebsd";
       docker_tag_with_digest = None;
       ocaml_version = "5.1";
     };
@@ -172,7 +181,7 @@ let image_of_distro = function
         (Printf.sprintf "Unhandled distro: %s" (DD.tag_of_distro (d :> DD.t)))
 
 let get_digests platforms =
-  let schedule = Current_cache.Schedule.v ~valid_for:(Duration.of_day 30) () in
+  let schedule = Current_cache.Schedule.v ~valid_for:(Duration.of_day 1) () in
   let f (p : Platform.t) =
     match Platform.distro_to_os p.distro with
     | "linux" ->
