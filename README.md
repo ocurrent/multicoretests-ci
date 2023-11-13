@@ -110,3 +110,14 @@ dune exec -- multicoretests-ci \
 ```
 
 You should see the site on `localhost:8080`. You can then install the GitHub App onto your account and add the desired repository, the builds for which should then show up on the website.
+
+### Found bugs
+
+Multicoretests-CI aided in finding these bugs in the OCaml 5 multicore runtime.
+
+| Title | Date | Issue link |
+| --- | --- | --- |
+| STM Weak test parallel fail to trigger on s390x | 02/11/23 | https://github.com/ocaml-multicore/multicoretests/issues/406 |
+| Segfault on s390x in Effect test | 17/08/23 | https://github.com/ocaml-multicore/multicoretests/issues/383 |
+| Crashes and hangs on ppc64 trunk/5.2 | 14/08/23 | https://github.com/ocaml-multicore/multicoretests/issues/380 |
+| s390x thread_createtree failures | 10/07/23 | https://github.com/ocaml-multicore/multicoretests/issues/374 |
