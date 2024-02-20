@@ -146,6 +146,15 @@ let freebsd_platforms : Platform.t list =
       docker_tag_with_digest = None;
       ocaml_version = "5.1";
     };
+    {
+      builder = Builders.local;
+      pool = "freebsd-x86_64";
+      distro = "freebsd";
+      arch = `X86_64;
+      docker_tag = "freebsd";
+      docker_tag_with_digest = None;
+      ocaml_version = "5.2";
+    };
   ]
 
 let pool_of_arch : arch -> string = function
