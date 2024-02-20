@@ -88,38 +88,42 @@ module Platform = struct
 end
 
 let macos_platforms : Platform.t list =
-    (* {
-         label = "macos-amd64";
-         builder = Builders.local;
-         pool = "macos-x86_64";
-         distro = "macos-homebrew";
-         arch = `X86_64;
-         docker_tag = "homebrew/brew";
-       }; *)
-  List.map (fun ocaml_version ->
-      Platform.{
-        builder = Builders.local;
-        pool = "macos-arm64";
-        distro = "macos-homebrew";
-        arch = `Aarch64;
-        docker_tag = "homebrew/brew";
-        docker_tag_with_digest = None;
-        ocaml_version;
-      })
-    ["5.0"; "5.1"; "5.2"]
+  (* {
+       label = "macos-amd64";
+       builder = Builders.local;
+       pool = "macos-x86_64";
+       distro = "macos-homebrew";
+       arch = `X86_64;
+       docker_tag = "homebrew/brew";
+     }; *)
+  List.map
+    (fun ocaml_version ->
+      Platform.
+        {
+          builder = Builders.local;
+          pool = "macos-arm64";
+          distro = "macos-homebrew";
+          arch = `Aarch64;
+          docker_tag = "homebrew/brew";
+          docker_tag_with_digest = None;
+          ocaml_version;
+        })
+    [ "5.0"; "5.1"; "5.2" ]
 
 let freebsd_platforms : Platform.t list =
-  List.map (fun ocaml_version ->
-      Platform.{
-        builder = Builders.local;
-        pool = "freebsd-x86_64";
-        distro = "freebsd";
-        arch = `X86_64;
-        docker_tag = "freebsd";
-        docker_tag_with_digest = None;
-        ocaml_version;
-      })
-    ["5.0"; "5.1"; "5.2"]
+  List.map
+    (fun ocaml_version ->
+      Platform.
+        {
+          builder = Builders.local;
+          pool = "freebsd-x86_64";
+          distro = "freebsd";
+          arch = `X86_64;
+          docker_tag = "freebsd";
+          docker_tag_with_digest = None;
+          ocaml_version;
+        })
+    [ "5.0"; "5.1"; "5.2" ]
 
 let pool_of_arch : arch -> string = function
   (* | `X86_64 | `I386 -> "linux-x86_64"
