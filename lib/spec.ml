@@ -15,6 +15,7 @@ let install_project_deps opam_repo_commit os arch =
   let open Obuilder_spec in
   let cache =
     match os with
+    | `Freebsd
     | `Linux ->
         [
           Obuilder_spec.Cache.v "opam-archives"
@@ -26,11 +27,6 @@ let install_project_deps opam_repo_commit os arch =
             ~target:"/Users/mac1000/.opam/download-cache";
           Obuilder_spec.Cache.v "homebrew"
             ~target:"/Users/mac1000/Library/Caches/Homebrew";
-        ]
-    | `Freebsd ->
-        [
-          Obuilder_spec.Cache.v "opam-archives"
-            ~target:"/usr/home/opam/.opam/download-cache";
         ]
     | `Windows | `Cygwin -> failwith "Windows and Cygwin not supported"
   in
