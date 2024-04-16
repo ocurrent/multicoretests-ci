@@ -108,7 +108,7 @@ let macos_platforms : Platform.t list =
           docker_tag_with_digest = None;
           ocaml_version;
         })
-    [ "5.0"; "5.1"; "5.2" ]
+    [ "5.1"; "5.2" ]
 
 let freebsd_platforms : Platform.t list =
   List.map
@@ -123,7 +123,7 @@ let freebsd_platforms : Platform.t list =
           docker_tag_with_digest = None;
           ocaml_version;
         })
-    [ "5.0"; "5.1"; "5.2" ]
+    [ "5.1"; "5.2" ]
 
 let pool_of_arch : arch -> string = function
   (* | `X86_64 | `I386 -> "linux-x86_64"
@@ -193,7 +193,6 @@ let platforms () =
   in
   let platforms =
     [
-      ("5.0", `Debian `V11, `Aarch64);
       ("5.1", `Debian `V11, `Aarch64);
       ("5.2", `Debian `V11, `Aarch64);
       ("5.1", `Debian `V11, `S390x);
