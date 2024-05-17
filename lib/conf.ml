@@ -87,29 +87,6 @@ module Platform = struct
   let pp = Fmt.of_to_string label
 end
 
-let macos_platforms : Platform.t list =
-  (* {
-       label = "macos-amd64";
-       builder = Builders.local;
-       pool = "macos-x86_64";
-       distro = "macos-homebrew";
-       arch = `X86_64;
-       docker_tag = "homebrew/brew";
-     }; *)
-  List.map
-    (fun ocaml_version ->
-      Platform.
-        {
-          builder = Builders.local;
-          pool = "macos-arm64";
-          distro = "macos-homebrew";
-          arch = `Aarch64;
-          docker_tag = "homebrew/brew";
-          docker_tag_with_digest = None;
-          ocaml_version;
-        })
-    [ "5.1"; "5.2" ]
-
 let freebsd_platforms : Platform.t list =
   List.map
     (fun ocaml_version ->
@@ -202,4 +179,4 @@ let platforms () =
     |> List.map (fun (ocaml_version, distro, arch) ->
            v ~arch distro ocaml_version)
   in
-  platforms @ macos_platforms @ freebsd_platforms |> get_digests
+  platforms @ freebsd_platforms |> get_digests
