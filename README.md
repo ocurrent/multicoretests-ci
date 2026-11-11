@@ -114,3 +114,8 @@ Multicoretests-CI aided in finding these bugs in the OCaml 5 multicore runtime.
 | Segfault on s390x in Effect test | 17/08/23 | https://github.com/ocaml-multicore/multicoretests/issues/383 |
 | Crashes and hangs on ppc64 trunk/5.2 | 14/08/23 | https://github.com/ocaml-multicore/multicoretests/issues/380 |
 | s390x thread_createtree failures | 10/07/23 | https://github.com/ocaml-multicore/multicoretests/issues/374 |
+| Unexpected STM Sys parallel test counterexample on s390x and ppc64le | 05/07/24 | https://github.com/ocaml-multicore/multicoretests/issues/466 |
+| Fatal error: Failed to create domain on s390x, MinGW, Cygwin, ... | 20/12/23 | https://github.com/ocaml-multicore/multicoretests/issues/428 |
+| Deadlock in 'thread_createtree - with Atomic' on Linux ARM64 | 14/12/23 | https://github.com/ocaml-multicore/multicoretests/issues/425 |
+| `Out_channel.flush` can cause `Sys_error` when used in parallel | 22/03/24 | https://github.com/ocaml-multicore/multicoretests/issues/444 |
+| Output to closed Out_channel fails to raise Sys_error | 16/01/24 | https://github.com/ocaml-multicore/multicoretests/issues/432 |
